@@ -38,7 +38,7 @@ impl Renderer {
         .expect("Failed to create device");
 
         let size = window.inner_size();
-        let format = surface.get_preferred_format(&adapter).unwrap();
+        let format = adapter.get_texture_formats_compatible_with_surface(&surface)[0];
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
