@@ -12,10 +12,10 @@ impl LLMEngine {
         LLMEngine { model }
     }
 
-    pub fn process(&mut self) {
+    pub fn process(&mut self) -> String {
         // Example: generate a sprite description
         let prompt = "Generate a 2D sprite of a dragon.";
         let output = self.model.generate(prompt, None);
-        println!("LLM output: {}", output.unwrap_or_default());
+        output.unwrap_or_default()
     }
 }

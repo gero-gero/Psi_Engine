@@ -43,7 +43,8 @@ impl Engine {
         self.physics_world.step(1.0 / 60.0);
 
         // Update AI (placeholder)
-        self.ai_engine.process();
+        let output = self.ai_engine.process();
+        self.gui_editor.set_ai_output(output);
     }
 
     pub fn render(&mut self) {
