@@ -58,7 +58,8 @@ impl Engine {
     }
 
     pub fn render(&mut self) {
-        self.renderer.render_frame(&self.scene, &mut self.gui_editor, &self.window, self.gui_editor.show_3d);
+        let show_3d = self.gui_editor.show_3d;
+        self.renderer.render_frame(&self.scene, &mut self.gui_editor, &self.window, show_3d);
     }
 
     pub fn handle_window_event(&mut self, event: &winit::event::WindowEvent) -> bool {

@@ -5,7 +5,7 @@ use egui::{Context};
 pub struct GuiEditor {
     pub egui_state: EguiWinitState,
     pub ctx: Context,
-    ai_output: String,
+    pub ai_output: String,
     pub generate_requested: bool,
     pub show_3d: bool,
 }

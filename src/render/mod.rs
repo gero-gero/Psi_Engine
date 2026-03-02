@@ -1,6 +1,6 @@
 use winit::window::Window;
 use wgpu::{Device, Queue, Surface, Adapter};
-use egui_wgpu::Renderer;
+use egui_wgpu::Renderer as EguiRenderer;
 
 pub struct Renderer {
     pub surface: Surface,
@@ -10,7 +10,7 @@ pub struct Renderer {
     pub depth_texture: wgpu::Texture,
     pub depth_view: wgpu::TextureView,
     pub config: wgpu::SurfaceConfiguration,
-    pub egui_renderer: Renderer,
+    pub egui_renderer: EguiRenderer,
 }
 
 impl Renderer {
@@ -68,7 +68,7 @@ impl Renderer {
         });
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let egui_renderer = Renderer::new(&device, format, None, 1);
+        let egui_renderer = EguiRenderer::new(&device, format, None, 1);
 
         Renderer {
             surface,
