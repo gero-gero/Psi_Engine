@@ -207,8 +207,8 @@ impl Sprite {
             &rgba,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
+                bytes_per_row: Some(std::num::NonZeroU32::new(4 * dimensions.0).unwrap()),
+                rows_per_image: Some(std::num::NonZeroU32::new(dimensions.1).unwrap()),
             },
             wgpu::Extent3d {
                 width: dimensions.0,

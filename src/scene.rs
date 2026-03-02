@@ -18,10 +18,10 @@ impl Scene {
         }
     }
 
-    pub fn update(&mut self, queue: &wgpu::Queue, input_handler: &crate::input::InputHandler, _dt: f32, window_size: [f32; 2]) {
-        let mouse_ndc = [
-            (input_handler.mouse_position[0] as f32 / window_size[0]) * 2.0 - 1.0,
-            -((input_handler.mouse_position[1] as f32 / window_size[1]) * 2.0 - 1.0),
+    pub fn update(&mut self, _queue: &wgpu::Queue, input_handler: &crate::input::InputHandler, _dt: f32, _window_size: [f32; 2]) {
+        let _mouse_ndc = [
+            (input_handler.mouse_position[0] as f32 / _window_size[0]) * 2.0 - 1.0,
+            -((input_handler.mouse_position[1] as f32 / _window_size[1]) * 2.0 - 1.0),
         ];
 
         if input_handler.mouse_left_pressed && !self.dragging {
