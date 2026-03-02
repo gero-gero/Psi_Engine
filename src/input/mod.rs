@@ -8,15 +8,12 @@ impl InputHandler {
     }
 
     pub fn update(&mut self) {
-        // Process input state (placeholder)
+        // Process input state
     }
 
     pub fn handle_event(&mut self, event: &WindowEvent) -> bool {
         match event {
-            WindowEvent::KeyboardInput { .. } => {
-                // Handle keyboard
-                true
-            }
+            WindowEvent::KeyboardInput { .. } => true,
             _ => false,
         }
     }

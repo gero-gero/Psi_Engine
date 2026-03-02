@@ -12,11 +12,14 @@ impl GuiEditor {
     pub fn new() -> Self {
         let ctx = CtxRef::default();
         let egui_state = EguiWinitState::new(&ctx);
-        GuiEditor { egui_state, ctx, ai_output: String::new() }
+        GuiEditor {
+            egui_state,
+            ctx,
+            ai_output: String::new(),
+        }
     }
 
     pub fn handle_event(&mut self, event: &WindowEvent) -> bool {
-        // Let egui consume the event
         self.egui_state.on_event(event)
     }
 
@@ -26,14 +29,15 @@ impl GuiEditor {
             CentralPanel::default().show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
                 if ui.button("Generate Sprite").clicked() {
-                    // The actual generation is handled by the engine; this button just triggers a UI refresh
+                    // Trigger UI refresh (actual generation handled by engine)
                 }
                 ui.separator();
                 ui.label(format!("Last AI output: {}", self.ai_output));
             });
         });
 
-        self.egui_state.handle_platform_output(window, &self.ctx, full_output.platform_output);
+        self.egui_state
+            .handle_platform_output(window, &self.ctx, full_output.platform_output);
     }
 
     pub fn set_ai_output(&mut self, output: String) {

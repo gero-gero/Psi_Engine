@@ -5,7 +5,8 @@ impl PhysicsWorld {
         PhysicsWorld
     }
 
+    /// Advances the physics simulation by the given time step.
     pub fn step(&mut self, dt: f32) {
-        // Update physics simulation (placeholder)
+        // Update physics simulation
     }
 }

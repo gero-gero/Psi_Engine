@@ -4,9 +4,7 @@ pub mod physics;
 pub mod gui;
 pub mod ai;
 
-use winit::{
-    window::{Window, WindowBuilder},
-};
+use winit::window::Window;
 
 pub struct Engine {
     pub window: Window,
@@ -36,15 +34,13 @@ impl Engine {
     }
 
     pub fn update(&mut self) {
-        // Update input
         self.input_handler.update();
-
-        // Update physics
         self.physics_world.step(1.0 / 60.0);
 
-        // Update AI (placeholder)
-        let output = self.ai_engine.process();
-        self.gui_editor.set_ai_output(output);
+        match self.ai_engine.process() {
+            Ok(output) => self.gui_editor.set_ai_output(output),
+            Err(e) => eprintln!("AI processing error: {}", e),
+        }
     }
 
     pub fn render(&mut self) {
@@ -53,11 +49,9 @@ impl Engine {
     }
 
     pub fn handle_window_event(&mut self, event: &winit::event::WindowEvent) -> bool {
-        // Let GUI handle events first
         if self.gui_editor.handle_event(event) {
             return true;
         }
-        // Pass to input handler
         self.input_handler.handle_event(event)
     }
 }
