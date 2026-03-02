@@ -8,6 +8,7 @@ struct SpriteUniform {
     _padding: vec2<f32>,
     color: vec4<f32>,
     _padding2: vec2<f32>,
+    _padding3: vec2<f32>,
 };
 
 @group(0) @binding(0)
