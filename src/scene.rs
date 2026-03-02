@@ -16,11 +16,11 @@ impl Scene {
         }
     }
 
-    pub fn update(&mut self, _queue: &wgpu::Queue, input_handler: &crate::input::InputHandler, _dt: f32, window_size: [f32; 2]) {
+    pub fn update(&mut self, queue: &wgpu::Queue, input_handler: &crate::input::InputHandler, _dt: f32, window_size: [f32; 2]) {
         if input_handler.dragging {
             let drag_pos = input_handler.get_drag_position(window_size);
             if let Some(sprite) = self.sprites.get_mut(0) {
-                sprite.position = drag_pos;
+                sprite.update_position(queue, drag_pos);
             }
         }
     }

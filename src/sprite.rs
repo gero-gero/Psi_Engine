@@ -1,16 +1,35 @@
-use wgpu::{Device, Buffer, RenderPipeline};
+use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline};
 use wgpu::util::DeviceExt;
 
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SpriteUniform {
+    pub position: [f32; 2],
+    pub _padding: [f32; 2],
+}
+
 pub struct Sprite {
+    uniform: SpriteUniform,
+    uniform_buffer: Buffer,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
+    bind_group: BindGroup,
     render_pipeline: RenderPipeline,
-    pub position: [f32; 2],
 }
 
 impl Sprite {
     pub fn new(device: &Device) -> Self {
-        let position = [0.0, 0.0];
+        let uniform = SpriteUniform {
+            position: [0.0, 0.0],
+            _padding: [0.0, 0.0],
+        };
+
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Sprite Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         let vertices: [[f32; 2]; 4] = [
             [-0.1, -0.1],
             [0.1, -0.1],
@@ -30,6 +49,29 @@ impl Sprite {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Sprite Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Sprite Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Sprite Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("sprite.wgsl").into()),
@@ -37,11 +79,8 @@ impl Sprite {
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
-            push_constant_ranges: &[wgpu::PushConstantRange {
-                stages: wgpu::ShaderStages::VERTEX,
-                range: 0..8, // 2 f32
-            }],
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -88,11 +127,18 @@ impl Sprite {
         });
 
         Sprite {
+            uniform,
+            uniform_buffer,
             vertex_buffer,
             index_buffer,
+            bind_group,
             render_pipeline,
-            position,
         }
+    }
+
+    pub fn update_position(&mut self, queue: &Queue, position: [f32; 2]) {
+        self.uniform.position = position;
+        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
     }
 
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
@@ -110,7 +156,7 @@ impl Sprite {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&self.position));
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.draw_indexed(0..6, 0, 0..1);
