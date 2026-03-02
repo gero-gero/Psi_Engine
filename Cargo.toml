@@ -1,0 +1,13 @@
+[package]
+name = "game_engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winit = "0.28"
+wgpu = "0.15"
+egui = { version = "0.22", features = ["glow"] }
+egui-winit = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+llama_cpp = "0.2"
+pollster = "0.3"
