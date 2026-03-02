@@ -5,8 +5,8 @@ use winit::{
     window::WindowBuilder,
 };
 
-fn main() {
-    // Create an event loop
+#[tokio::main]
+async fn main() {
     let event_loop = EventLoop::new();
 
     // Build the window
@@ -24,7 +24,7 @@ fn main() {
 
         match event {
             Event::RedrawRequested(_) => {
-                engine.update();
+                pollster::block_on(engine.update());
                 engine.render();
             }
             Event::MainEventsCleared => {

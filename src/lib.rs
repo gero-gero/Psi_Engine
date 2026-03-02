@@ -39,13 +39,13 @@ impl Engine {
         }
     }
 
-    pub fn update(&mut self) {
+    pub async fn update(&mut self) {
         self.input_handler.update();
         self.physics_world.step(1.0 / 60.0);
         self.scene.update(&self.renderer.queue, &self.input_handler, 1.0 / 60.0);
 
         if self.gui_editor.take_generate_request() {
-            match self.ai_engine.process() {
+            match self.ai_engine.process().await {
                 Ok(output) => {
                     self.gui_editor.set_ai_output(output.clone());
                     let color = ai::LLMEngine::parse_color(&output);
