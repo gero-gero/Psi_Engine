@@ -22,8 +22,8 @@ impl GuiEditor {
 
     pub fn draw(&self, window: &winit::window::Window) {
         let raw_input = self.egui_state.take_egui_input(window);
-        let full_output = self.ctx.run(input => {
-            CentralPanel::default().show(&self.ctx, |ui| {
+        let full_output = self.ctx.run(raw_input, |ctx| {
+            CentralPanel::default().show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
                 if ui.button("Generate Sprite").clicked() {
                     // The actual generation is handled by the engine; this button just triggers a UI refresh
@@ -31,7 +31,7 @@ impl GuiEditor {
                 ui.separator();
                 ui.label(format!("Last AI output: {}", self.ai_output));
             });
-        }, raw_input);
+        });
 
         self.egui_state.handle_platform_output(window, &self.ctx, full_output.platform_output);
     }
