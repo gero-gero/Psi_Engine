@@ -71,7 +71,7 @@ impl Sprite {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: None,
+                    min_binding_size: Some(std::mem::size_of::<SpriteUniform>() as u64),
                 },
                 count: None,
             }],
