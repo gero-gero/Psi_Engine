@@ -3,7 +3,7 @@ use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct SpriteUniform {
+pub struct SpriteUniform {
     pub position: [f32; 2],
     pub color: [f32; 4],
 }
