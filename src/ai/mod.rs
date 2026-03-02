@@ -1,21 +1,24 @@
-use llama_cpp::{LlamaModel, LlamaParams};
+use lmstudio_client::{Client, Request};
 
 pub struct LLMEngine {
-    model: LlamaModel,
+    client: Client,
 }
 
 impl LLMEngine {
     pub fn new() -> Self {
-        // Load a local LLM (placeholder path)
-        let params = LlamaParams::default();
-        let model = LlamaModel::load("models/ggml-model.bin", &params).expect("Failed to load model");
-        LLMEngine { model }
+        // Connect to the local LM Studio server (default at http://localhost:1234)
+        let client = Client::new("http://localhost:1234")
+            .expect("Failed to connect to LM Studio");
+        LLMEngine { client }
     }
 
     pub fn process(&mut self) -> String {
-        // Example: generate a sprite description
+        // Example: generate a 2D sprite description
         let prompt = "Generate a 2D sprite of a dragon.";
-        let output = self.model.generate(prompt, None);
-        output.unwrap_or_default()
+        let request = Request::new(prompt);
+        match self.client.generate(request) {
+            Ok(response) => response.text,
+            Err(_) => String::new(),
+        }
     }
 }
