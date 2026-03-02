@@ -1,4 +1,4 @@
-use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline, Texture, TextureView, Sampler};
+use wgpu::{Device, Queue, Buffer, BindGroup, BindGroupLayout, RenderPipeline, Texture, TextureView, Sampler};
 use wgpu::util::DeviceExt;
 use image::GenericImageView;
 
@@ -15,6 +15,7 @@ pub struct Sprite {
     texture: Texture,
     texture_view: TextureView,
     sampler: Sampler,
+    bind_group_layout: BindGroupLayout,
     bind_group: BindGroup,
     render_pipeline: RenderPipeline,
 }
@@ -170,6 +171,7 @@ impl Sprite {
             texture,
             texture_view,
             sampler,
+            bind_group_layout,
             bind_group,
             render_pipeline,
         }
@@ -220,31 +222,9 @@ impl Sprite {
         self.texture = texture;
         self.texture_view = texture_view;
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Sprite Bind Group Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        });
-
         self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Sprite Bind Group"),
-            layout: &bind_group_layout,
+            layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
