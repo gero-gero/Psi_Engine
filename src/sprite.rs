@@ -5,10 +5,12 @@ pub struct Sprite {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     render_pipeline: RenderPipeline,
+    pub position: [f32; 2],
 }
 
 impl Sprite {
     pub fn new(device: &Device) -> Self {
+        let position = [0.0, 0.0];
         let vertices: [[f32; 2]; 4] = [
             [-0.1, -0.1],
             [0.1, -0.1],
@@ -36,7 +38,10 @@ impl Sprite {
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[],
-            push_constant_ranges: &[],
+            push_constant_ranges: &[wgpu::PushConstantRange {
+                stages: wgpu::ShaderStages::VERTEX,
+                range: 0..8, // 2 f32
+            }],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -86,6 +91,7 @@ impl Sprite {
             vertex_buffer,
             index_buffer,
             render_pipeline,
+            position,
         }
     }
 
@@ -104,6 +110,7 @@ impl Sprite {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&self.position));
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.draw_indexed(0..6, 0, 0..1);

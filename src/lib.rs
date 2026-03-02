@@ -42,7 +42,9 @@ impl Engine {
     pub async fn update(&mut self) {
         self.input_handler.update();
         self.physics_world.step(1.0 / 60.0);
-        self.scene.update(&self.renderer.queue, &self.input_handler, 1.0 / 60.0);
+        let size = self.window.inner_size();
+        let window_size = [size.width as f32, size.height as f32];
+        self.scene.update(&self.renderer.queue, &self.input_handler, 1.0 / 60.0, window_size);
 
         if self.gui_editor.take_generate_request() {
             match self.ai_engine.process().await {

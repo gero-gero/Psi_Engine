@@ -1,10 +1,15 @@
-use winit::event::{WindowEvent, VirtualKeyCode};
+use winit::event::{WindowEvent, VirtualKeyCode, MouseButton, ElementState};
 
 pub struct InputHandler {
     pub left: bool,
     pub right: bool,
     pub up: bool,
     pub down: bool,
+    pub mouse_position: [f64; 2],
+    pub mouse_left_pressed: bool,
+    pub dragging: bool,
+    pub drag_start: [f64; 2],
+    pub drag_offset: [f64; 2],
 }
 
 impl InputHandler {
@@ -14,6 +19,11 @@ impl InputHandler {
             right: false,
             up: false,
             down: false,
+            mouse_position: [0.0, 0.0],
+            mouse_left_pressed: false,
+            dragging: false,
+            drag_start: [0.0, 0.0],
+            drag_offset: [0.0, 0.0],
         }
     }
 
@@ -37,6 +47,25 @@ impl InputHandler {
                     false
                 }
             }
+            WindowEvent::MouseInput { button, state, .. } => {
+                if *button == MouseButton::Left {
+                    self.mouse_left_pressed = *state == ElementState::Pressed;
+                    if *state == ElementState::Pressed {
+                        self.dragging = true;
+                        self.drag_start = self.mouse_position;
+                        self.drag_offset = [0.0, 0.0];
+                    } else {
+                        self.dragging = false;
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.mouse_position = [position.x, position.y];
+                true
+            }
             _ => false,
         }
     }
@@ -57,5 +86,15 @@ impl InputHandler {
             vy -= 1.0;
         }
         [vx, vy]
+    }
+
+    pub fn get_drag_position(&self, window_size: [f32; 2]) -> [f32; 2] {
+        if self.dragging {
+            let x = (self.mouse_position[0] as f32 / window_size[0]) * 2.0 - 1.0;
+            let y = -((self.mouse_position[1] as f32 / window_size[1]) * 2.0 - 1.0);
+            [x, y]
+        } else {
+            [0.0, 0.0]
+        }
     }
 }
