@@ -35,6 +35,7 @@ fn main() {
                     // If the engine didn't handle it, close on request
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::Resized(size) => engine.resize(size),
                         _ => {}
                     }
                 }

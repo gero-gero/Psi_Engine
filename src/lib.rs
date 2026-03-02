@@ -3,6 +3,9 @@ pub mod input;
 pub mod physics;
 pub mod gui;
 pub mod ai;
+pub mod sprite;
+pub mod model3d;
+pub mod scene;
 
 use winit::window::Window;
 
@@ -13,6 +16,7 @@ pub struct Engine {
     pub physics_world: physics::PhysicsWorld,
     pub gui_editor: gui::GuiEditor,
     pub ai_engine: ai::LLMEngine,
+    pub scene: scene::Scene,
 }
 
 impl Engine {
@@ -22,6 +26,7 @@ impl Engine {
         let physics_world = physics::PhysicsWorld::new();
         let gui_editor = gui::GuiEditor::new();
         let ai_engine = ai::LLMEngine::new();
+        let scene = scene::Scene::new(&renderer.device);
 
         Engine {
             window,
@@ -30,21 +35,29 @@ impl Engine {
             physics_world,
             gui_editor,
             ai_engine,
+            scene,
         }
     }
 
     pub fn update(&mut self) {
         self.input_handler.update();
         self.physics_world.step(1.0 / 60.0);
+        self.scene.update(&self.renderer.queue, &self.input_handler, 1.0 / 60.0);
 
-        match self.ai_engine.process() {
-            Ok(output) => self.gui_editor.set_ai_output(output),
-            Err(e) => eprintln!("AI processing error: {}", e),
+        if self.gui_editor.take_generate_request() {
+            match self.ai_engine.process() {
+                Ok(output) => {
+                    self.gui_editor.set_ai_output(output.clone());
+                    let color = ai::LLMEngine::parse_color(&output);
+                    self.scene.set_sprite_color(&self.renderer.queue, 0, color);
+                }
+                Err(e) => eprintln!("AI processing error: {}", e),
+            }
         }
     }
 
     pub fn render(&mut self) {
-        self.renderer.render_frame();
+        self.renderer.render_frame(&self.scene);
         self.gui_editor.draw(&self.window);
     }
 
@@ -53,5 +66,9 @@ impl Engine {
             return true;
         }
         self.input_handler.handle_event(event)
+    }
+
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.renderer.resize(size);
     }
 }

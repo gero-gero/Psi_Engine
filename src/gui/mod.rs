@@ -6,6 +6,7 @@ pub struct GuiEditor {
     pub egui_state: EguiWinitState,
     pub ctx: CtxRef,
     ai_output: String,
+    pub generate_requested: bool,
 }
 
 impl GuiEditor {
@@ -16,6 +17,7 @@ impl GuiEditor {
             egui_state,
             ctx,
             ai_output: String::new(),
+            generate_requested: false,
         }
     }
 
@@ -23,16 +25,17 @@ impl GuiEditor {
         self.egui_state.on_event(event)
     }
 
-    pub fn draw(&self, window: &winit::window::Window) {
+    pub fn draw(&mut self, window: &winit::window::Window) {
         let raw_input = self.egui_state.take_egui_input(window);
         let full_output = self.ctx.run(raw_input, |ctx| {
             CentralPanel::default().show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
                 if ui.button("Generate Sprite").clicked() {
-                    // Trigger UI refresh (actual generation handled by engine)
+                    self.generate_requested = true;
                 }
                 ui.separator();
                 ui.label(format!("Last AI output: {}", self.ai_output));
+                ui.label("Use WASD to move the sprite.");
             });
         });
 
@@ -42,5 +45,11 @@ impl GuiEditor {
 
     pub fn set_ai_output(&mut self, output: String) {
         self.ai_output = output;
+    }
+
+    pub fn take_generate_request(&mut self) -> bool {
+        let req = self.generate_requested;
+        self.generate_requested = false;
+        req
     }
 }
