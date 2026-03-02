@@ -1,4 +1,4 @@
-use winit::event::{Event, WindowEvent, VirtualKeyCode};
+use winit::event::{WindowEvent, VirtualKeyCode};
 
 pub struct InputHandler {
     pub left: bool,

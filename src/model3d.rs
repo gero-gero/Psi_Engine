@@ -1,4 +1,5 @@
-use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline};
+use wgpu::{Device, Buffer, RenderPipeline};
+use wgpu::util::DeviceExt;
 
 pub struct Model3D {
     vertex_buffer: Buffer,
@@ -38,9 +39,9 @@ impl Model3D {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("3D Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("model3d.wgsl")),
+            source: wgpu::ShaderSource::Wgsl(include_str!("model3d.wgsl").into()),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -68,11 +69,11 @@ impl Model3D {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[Some(wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -108,14 +109,14 @@ impl Model3D {
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, depth_view: &wgpu::TextureView) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("3D Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: depth_view,
                 depth_ops: Some(wgpu::Operations {

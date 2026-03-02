@@ -1,5 +1,5 @@
 use winit::window::Window;
-use wgpu::{Device, Queue, Surface, TextureView};
+use wgpu::{Device, Queue, Surface};
 
 pub struct Renderer {
     pub surface: Surface,
@@ -7,12 +7,16 @@ pub struct Renderer {
     pub queue: Queue,
     pub depth_texture: wgpu::Texture,
     pub depth_view: wgpu::TextureView,
+    pub config: wgpu::SurfaceConfiguration,
 }
 
 impl Renderer {
     pub fn new(window: &Window) -> Self {
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
-        let surface = unsafe { instance.create_surface(window) };
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+        let surface = unsafe { instance.create_surface(window) }.expect("Failed to create surface");
         let adapter = pollster::block_on(instance.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -33,6 +37,17 @@ impl Renderer {
         .expect("Failed to create device");
 
         let size = window.inner_size();
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface.get_supported_formats(&adapter)[0],
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
+        };
+        surface.configure(&device, &config);
+
         let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Depth Texture"),
             size: wgpu::Extent3d {
@@ -45,6 +60,7 @@ impl Renderer {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Depth32Float,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
         });
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -54,6 +70,7 @@ impl Renderer {
             queue,
             depth_texture,
             depth_view,
+            config,
         }
     }
 
@@ -75,13 +92,9 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
-        self.surface.configure(&self.device, &wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: self.surface.get_supported_formats(&self.adapter)[0],
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
-        });
+        self.config.width = size.width;
+        self.config.height = size.height;
+        self.surface.configure(&self.device, &self.config);
         // Recreate depth texture
         self.depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Depth Texture"),
@@ -95,6 +108,7 @@ impl Renderer {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Depth32Float,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
         });
         self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
     }

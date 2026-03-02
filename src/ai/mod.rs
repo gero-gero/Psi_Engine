@@ -9,7 +9,7 @@ struct LMStudioRequest {
     max_tokens: i32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct Message {
     role: String,
     content: String,

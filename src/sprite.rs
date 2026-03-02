@@ -1,4 +1,5 @@
 use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline};
+use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -8,7 +9,7 @@ struct SpriteUniform {
 }
 
 pub struct Sprite {
-    uniform: SpriteUniform,
+    pub uniform: SpriteUniform,
     uniform_buffer: Buffer,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
@@ -71,9 +72,9 @@ impl Sprite {
             }],
         });
 
-        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Sprite Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("sprite.wgsl")),
+            source: wgpu::ShaderSource::Wgsl(include_str!("sprite.wgsl").into()),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -101,11 +102,11 @@ impl Sprite {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[Some(wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -148,14 +149,14 @@ impl Sprite {
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: None,
         });
 

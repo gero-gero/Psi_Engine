@@ -1,4 +1,4 @@
-use winit::event::{Event, WindowEvent};
+use winit::event::WindowEvent;
 use egui_winit::State as EguiWinitState;
 use egui::{Context, CentralPanel};
 
@@ -22,7 +22,8 @@ impl GuiEditor {
     }
 
     pub fn handle_event(&mut self, event: &WindowEvent) -> bool {
-        self.egui_state.on_event(event)
+        let response = self.egui_state.on_event(&self.ctx, event);
+        response.consumed
     }
 
     pub fn draw(&mut self, window: &winit::window::Window) {
