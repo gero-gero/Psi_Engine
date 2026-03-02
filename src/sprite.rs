@@ -11,6 +11,7 @@ pub struct SpriteUniform {
     pub _padding2: [f32; 2],
     pub _padding3: [f32; 2],
     pub _padding4: [f32; 2],
+    pub _padding5: [f32; 2],
 }
 
 pub struct Sprite {
@@ -32,6 +33,7 @@ impl Sprite {
             _padding2: [0.0, 0.0],
             _padding3: [0.0, 0.0],
             _padding4: [0.0, 0.0],
+            _padding5: [0.0, 0.0],
         };
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
