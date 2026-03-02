@@ -1,17 +1,17 @@
 use winit::event::{Event, WindowEvent};
 use egui_winit::State as EguiWinitState;
-use egui::{CtxRef, CentralPanel};
+use egui::{Context, CentralPanel};
 
 pub struct GuiEditor {
     pub egui_state: EguiWinitState,
-    pub ctx: CtxRef,
+    pub ctx: Context,
     ai_output: String,
     pub generate_requested: bool,
 }
 
 impl GuiEditor {
     pub fn new() -> Self {
-        let ctx = CtxRef::default();
+        let ctx = Context::default();
         let egui_state = EguiWinitState::new(&ctx);
         GuiEditor {
             egui_state,
