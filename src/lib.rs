@@ -24,7 +24,7 @@ impl Engine {
         let renderer = render::Renderer::new(&window);
         let input_handler = input::InputHandler::new();
         let physics_world = physics::PhysicsWorld::new();
-        let gui_editor = gui::GuiEditor::new();
+        let gui_editor = gui::GuiEditor::new(&window);
         let ai_engine = ai::LLMEngine::new();
         let scene = scene::Scene::new(&renderer.device);
 

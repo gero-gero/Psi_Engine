@@ -39,7 +39,7 @@ impl Renderer {
         let size = window.inner_size();
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&adapter)[0],
+            format: wgpu::TextureFormat::Bgra8UnormSrgb, // Default format
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,

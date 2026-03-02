@@ -4,8 +4,8 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct SpriteUniform {
-    position: [f32; 2],
-    color: [f32; 4],
+    pub position: [f32; 2],
+    pub color: [f32; 4],
 }
 
 pub struct Sprite {
