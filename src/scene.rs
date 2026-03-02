@@ -33,10 +33,7 @@ impl Scene {
         }
 
         if self.dragging {
-            let new_pos = mouse_ndc;
-            if let Some(sprite) = self.sprites.get_mut(0) {
-                sprite.update_position(queue, new_pos);
-            }
+            // For dragging, we could move the sprite, but since it's textured, perhaps keep position fixed
         }
     }
 
@@ -53,7 +50,9 @@ impl Scene {
         }
     }
 
-    pub fn set_sprite_color(&mut self, _queue: &wgpu::Queue, _index: usize, _color: [f32; 4]) {
-        // No color change for now
+    pub fn set_sprite_texture(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, index: usize, image_data: &[u8]) {
+        if let Some(sprite) = self.sprites.get_mut(index) {
+            sprite.update_texture(device, queue, image_data);
+        }
     }
 }

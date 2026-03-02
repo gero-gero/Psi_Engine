@@ -1,40 +1,31 @@
-use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline};
+use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline, Texture, TextureView, Sampler};
 use wgpu::util::DeviceExt;
+use image::GenericImageView;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct SpriteUniform {
-    pub position: [f32; 2],
-    pub _padding: [f32; 2],
+struct Vertex {
+    position: [f32; 2],
+    uv: [f32; 2],
 }
 
 pub struct Sprite {
-    pub uniform: SpriteUniform,
-    uniform_buffer: Buffer,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
+    texture: Texture,
+    texture_view: TextureView,
+    sampler: Sampler,
     bind_group: BindGroup,
     render_pipeline: RenderPipeline,
 }
 
 impl Sprite {
     pub fn new(device: &Device) -> Self {
-        let uniform = SpriteUniform {
-            position: [0.5, 0.0], // Start at visible position
-            _padding: [0.0, 0.0],
-        };
-
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let vertices: [[f32; 2]; 4] = [
-            [-0.1, -0.1],
-            [0.1, -0.1],
-            [0.1, 0.1],
-            [-0.1, 0.1],
+        let vertices: [Vertex; 4] = [
+            Vertex { position: [-0.1, -0.1], uv: [0.0, 1.0] },
+            Vertex { position: [0.1, -0.1], uv: [1.0, 1.0] },
+            Vertex { position: [0.1, 0.1], uv: [1.0, 0.0] },
+            Vertex { position: [-0.1, 0.1], uv: [0.0, 0.0] },
         ];
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -49,27 +40,67 @@ impl Sprite {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        // Default 1x1 red texture
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Sprite Texture"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Sprite Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Sprite Bind Group"),
             layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -90,13 +121,20 @@ impl Sprite {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                    array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[wgpu::VertexAttribute {
-                        offset: 0,
-                        shader_location: 0,
-                        format: wgpu::VertexFormat::Float32x2,
-                    }],
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x2,
+                        },
+                        wgpu::VertexAttribute {
+                            offset: 8,
+                            shader_location: 1,
+                            format: wgpu::VertexFormat::Float32x2,
+                        },
+                    ],
                 }],
             },
             fragment: Some(wgpu::FragmentState {
@@ -127,18 +165,97 @@ impl Sprite {
         });
 
         Sprite {
-            uniform,
-            uniform_buffer,
             vertex_buffer,
             index_buffer,
+            texture,
+            texture_view,
+            sampler,
             bind_group,
             render_pipeline,
         }
     }
 
-    pub fn update_position(&mut self, queue: &Queue, position: [f32; 2]) {
-        self.uniform.position = position;
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
+    pub fn update_texture(&mut self, device: &Device, queue: &Queue, image_data: &[u8]) {
+        let img = image::load_from_memory(image_data).expect("Failed to load image");
+        let rgba = img.to_rgba8();
+        let dimensions = img.dimensions();
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Sprite Texture"),
+            size: wgpu::Extent3d {
+                width: dimensions.0,
+                height: dimensions.1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &rgba,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * dimensions.0),
+                rows_per_image: Some(dimensions.1),
+            },
+            wgpu::Extent3d {
+                width: dimensions.0,
+                height: dimensions.1,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        self.texture = texture;
+        self.texture_view = texture_view;
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Sprite Bind Group Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Sprite Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
     }
 
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {

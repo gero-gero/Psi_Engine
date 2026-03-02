@@ -33,13 +33,13 @@ impl GuiEditor {
         let full_output = self.ctx.run(raw_input, |ctx| {
             TopBottomPanel::top("top_panel").show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
-                if ui.button("Generate Sprite Color").clicked() {
+                if ui.button("Generate Sprite").clicked() {
                     self.generate_requested = true;
                 }
                 ui.checkbox(&mut self.show_3d, "Show 3D Cube");
                 ui.separator();
-                ui.label(format!("Last AI output: {}", self.ai_output));
-                ui.label("Use WASD to move the sprite.");
+                ui.label(format!("Last output: {}", self.ai_output));
+                ui.label("Left click and drag to move the sprite.");
             });
         });
 

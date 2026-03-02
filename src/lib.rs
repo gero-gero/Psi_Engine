@@ -15,7 +15,7 @@ pub struct Engine {
     pub input_handler: input::InputHandler,
     pub physics_world: physics::PhysicsWorld,
     pub gui_editor: gui::GuiEditor,
-    pub ai_engine: ai::LLMEngine,
+    pub asset_generator: ai::AssetGenerator,
     pub scene: scene::Scene,
 }
 
@@ -25,7 +25,7 @@ impl Engine {
         let input_handler = input::InputHandler::new();
         let physics_world = physics::PhysicsWorld::new();
         let gui_editor = gui::GuiEditor::new(&window);
-        let ai_engine = ai::LLMEngine::new();
+        let asset_generator = ai::AssetGenerator::new();
         let scene = scene::Scene::new(&renderer.device);
 
         Engine {
@@ -34,7 +34,7 @@ impl Engine {
             input_handler,
             physics_world,
             gui_editor,
-            ai_engine,
+            asset_generator,
             scene,
         }
     }
@@ -47,11 +47,12 @@ impl Engine {
         self.scene.update(&self.renderer.queue, &self.input_handler, 1.0 / 60.0, window_size);
 
         if self.gui_editor.take_generate_request() {
-            match self.ai_engine.process().await {
-                Ok(output) => {
-                    self.gui_editor.set_ai_output(output);
+            match self.asset_generator.generate_sprite("A simple 2D sprite of a red square").await {
+                Ok(image_data) => {
+                    self.scene.set_sprite_texture(&self.renderer.device, &self.renderer.queue, 0, &image_data);
+                    self.gui_editor.set_ai_output("Sprite generated".to_string());
                 }
-                Err(e) => eprintln!("AI processing error: {}", e),
+                Err(e) => eprintln!("Asset generation error: {}", e),
             }
         }
     }
