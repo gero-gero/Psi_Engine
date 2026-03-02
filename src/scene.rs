@@ -25,13 +25,15 @@ impl Scene {
         }
     }
 
-    pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, depth_view: Option<&wgpu::TextureView>) {
+    pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, depth_view: Option<&wgpu::TextureView>, show_3d: bool) {
         for sprite in &self.sprites {
             sprite.render(encoder, view);
         }
-        if let Some(depth_view) = depth_view {
-            for model in &self.models_3d {
-                model.render(encoder, view, depth_view);
+        if show_3d {
+            if let Some(depth_view) = depth_view {
+                for model in &self.models_3d {
+                    model.render(encoder, view, depth_view);
+                }
             }
         }
     }
