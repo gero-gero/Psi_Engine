@@ -74,7 +74,7 @@ impl Renderer {
         }
     }
 
-    pub fn render_frame(&mut self, scene: &crate::scene::Scene) {
+    pub fn render_frame(&mut self, scene: &crate::scene::Scene, show_3d: bool) {
         let output = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => return,
@@ -85,7 +85,7 @@ impl Renderer {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        scene.render(&mut encoder, &view, Some(&self.depth_view));
+        scene.render(&mut encoder, &view, Some(&self.depth_view), show_3d);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

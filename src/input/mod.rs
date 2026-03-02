@@ -40,4 +40,22 @@ impl InputHandler {
             _ => false,
         }
     }
+
+    pub fn get_velocity(&self) -> [f32; 2] {
+        let mut vx = 0.0;
+        let mut vy = 0.0;
+        if self.left {
+            vx -= 1.0;
+        }
+        if self.right {
+            vx += 1.0;
+        }
+        if self.up {
+            vy += 1.0;
+        }
+        if self.down {
+            vy -= 1.0;
+        }
+        [vx, vy]
+    }
 }

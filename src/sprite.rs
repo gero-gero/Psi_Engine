@@ -5,6 +5,7 @@ use wgpu::util::DeviceExt;
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SpriteUniform {
     pub position: [f32; 2],
+    pub velocity: [f32; 2],
     pub _padding: [f32; 2],
     pub color: [f32; 4],
 }
@@ -22,6 +23,7 @@ impl Sprite {
     pub fn new(device: &Device) -> Self {
         let uniform = SpriteUniform {
             position: [0.0, 0.0],
+            velocity: [0.0, 0.0],
             _padding: [0.0, 0.0],
             color: [1.0, 0.0, 0.0, 1.0],
         };
@@ -138,8 +140,33 @@ impl Sprite {
         }
     }
 
-    pub fn update_position(&mut self, queue: &Queue, position: [f32; 2]) {
-        self.uniform.position = position;
+    pub fn update(&mut self, queue: &Queue, dt: f32) {
+        self.uniform.position[0] += self.uniform.velocity[0] * dt;
+        self.uniform.position[1] += self.uniform.velocity[1] * dt;
+
+        // Boundary check (assuming screen is -1 to 1)
+        if self.uniform.position[0] < -0.9 {
+            self.uniform.position[0] = -0.9;
+            self.uniform.velocity[0] = -self.uniform.velocity[0];
+        }
+        if self.uniform.position[0] > 0.9 {
+            self.uniform.position[0] = 0.9;
+            self.uniform.velocity[0] = -self.uniform.velocity[0];
+        }
+        if self.uniform.position[1] < -0.9 {
+            self.uniform.position[1] = -0.9;
+            self.uniform.velocity[1] = -self.uniform.velocity[1];
+        }
+        if self.uniform.position[1] > 0.9 {
+            self.uniform.position[1] = 0.9;
+            self.uniform.velocity[1] = -self.uniform.velocity[1];
+        }
+
+        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
+    }
+
+    pub fn set_velocity(&mut self, queue: &Queue, velocity: [f32; 2]) {
+        self.uniform.velocity = velocity;
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
     }
 

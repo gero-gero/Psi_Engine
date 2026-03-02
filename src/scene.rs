@@ -19,20 +19,9 @@ impl Scene {
 
     pub fn update(&mut self, queue: &Queue, input_handler: &crate::input::InputHandler, dt: f32) {
         for sprite in &mut self.sprites {
-            let mut position = sprite.uniform.position;
-            if input_handler.left {
-                position[0] -= 1.0 * dt;
-            }
-            if input_handler.right {
-                position[0] += 1.0 * dt;
-            }
-            if input_handler.up {
-                position[1] += 1.0 * dt;
-            }
-            if input_handler.down {
-                position[1] -= 1.0 * dt;
-            }
-            sprite.update_position(queue, position);
+            let velocity = input_handler.get_velocity();
+            sprite.set_velocity(queue, velocity);
+            sprite.update(queue, dt);
         }
     }
 

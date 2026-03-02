@@ -57,7 +57,7 @@ impl Engine {
     }
 
     pub fn render(&mut self) {
-        self.renderer.render_frame(&self.scene);
+        self.renderer.render_frame(&self.scene, self.gui_editor.show_3d);
         self.gui_editor.draw(&self.window);
     }
 

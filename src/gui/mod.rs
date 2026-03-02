@@ -7,6 +7,7 @@ pub struct GuiEditor {
     pub ctx: Context,
     ai_output: String,
     pub generate_requested: bool,
+    pub show_3d: bool,
 }
 
 impl GuiEditor {
@@ -18,6 +19,7 @@ impl GuiEditor {
             ctx,
             ai_output: String::new(),
             generate_requested: false,
+            show_3d: false,
         }
     }
 
@@ -31,9 +33,10 @@ impl GuiEditor {
         let full_output = self.ctx.run(raw_input, |ctx| {
             CentralPanel::default().show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
-                if ui.button("Generate Sprite").clicked() {
+                if ui.button("Generate Sprite Color").clicked() {
                     self.generate_requested = true;
                 }
+                ui.checkbox(&mut self.show_3d, "Show 3D Cube");
                 ui.separator();
                 ui.label(format!("Last AI output: {}", self.ai_output));
                 ui.label("Use WASD to move the sprite.");
