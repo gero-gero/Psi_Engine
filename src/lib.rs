@@ -47,9 +47,7 @@ impl Engine {
         if self.gui_editor.take_generate_request() {
             match self.ai_engine.process().await {
                 Ok(output) => {
-                    self.gui_editor.set_ai_output(output.clone());
-                    let color = ai::LLMEngine::parse_color(&output);
-                    self.scene.set_sprite_color(&self.renderer.queue, 0, color);
+                    self.gui_editor.set_ai_output(output);
                 }
                 Err(e) => eprintln!("AI processing error: {}", e),
             }

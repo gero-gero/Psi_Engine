@@ -1,51 +1,14 @@
-use wgpu::{Device, Queue, Buffer, BindGroup, RenderPipeline};
+use wgpu::{Device, Buffer, RenderPipeline};
 use wgpu::util::DeviceExt;
 
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct SpriteUniform {
-    pub position: [f32; 2],
-    pub velocity: [f32; 2],
-    pub _padding: [f32; 2],
-    pub color: [f32; 4],
-    pub _padding2: [f32; 2],
-    pub _padding3: [f32; 2],
-    pub _padding4: [f32; 2],
-    pub _padding5: [f32; 2],
-    pub _padding6: [f32; 2],
-    pub _padding7: [f32; 4],
-}
-
 pub struct Sprite {
-    pub uniform: SpriteUniform,
-    uniform_buffer: Buffer,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    bind_group: BindGroup,
     render_pipeline: RenderPipeline,
 }
 
 impl Sprite {
     pub fn new(device: &Device) -> Self {
-        let uniform = SpriteUniform {
-            position: [0.0, 0.0],
-            velocity: [0.0, 0.0],
-            _padding: [0.0, 0.0],
-            color: [1.0, 0.0, 0.0, 1.0],
-            _padding2: [0.0, 0.0],
-            _padding3: [0.0, 0.0],
-            _padding4: [0.0, 0.0],
-            _padding5: [0.0, 0.0],
-            _padding6: [0.0, 0.0],
-            _padding7: [0.0, 0.0, 0.0, 0.0],
-        };
-
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
         let vertices: [[f32; 2]; 4] = [
             [-0.1, -0.1],
             [0.1, -0.1],
@@ -65,29 +28,6 @@ impl Sprite {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Sprite Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sprite Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
-            }],
-        });
-
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Sprite Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("sprite.wgsl").into()),
@@ -95,7 +35,7 @@ impl Sprite {
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
 
@@ -143,48 +83,10 @@ impl Sprite {
         });
 
         Sprite {
-            uniform,
-            uniform_buffer,
             vertex_buffer,
             index_buffer,
-            bind_group,
             render_pipeline,
         }
-    }
-
-    pub fn update(&mut self, queue: &Queue, dt: f32) {
-        self.uniform.position[0] += self.uniform.velocity[0] * dt;
-        self.uniform.position[1] += self.uniform.velocity[1] * dt;
-
-        // Boundary check (assuming screen is -1 to 1)
-        if self.uniform.position[0] < -0.9 {
-            self.uniform.position[0] = -0.9;
-            self.uniform.velocity[0] = -self.uniform.velocity[0];
-        }
-        if self.uniform.position[0] > 0.9 {
-            self.uniform.position[0] = 0.9;
-            self.uniform.velocity[0] = -self.uniform.velocity[0];
-        }
-        if self.uniform.position[1] < -0.9 {
-            self.uniform.position[1] = -0.9;
-            self.uniform.velocity[1] = -self.uniform.velocity[1];
-        }
-        if self.uniform.position[1] > 0.9 {
-            self.uniform.position[1] = 0.9;
-            self.uniform.velocity[1] = -self.uniform.velocity[1];
-        }
-
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
-    }
-
-    pub fn set_velocity(&mut self, queue: &Queue, velocity: [f32; 2]) {
-        self.uniform.velocity = velocity;
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
-    }
-
-    pub fn set_color(&mut self, queue: &Queue, color: [f32; 4]) {
-        self.uniform.color = color;
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniform]));
     }
 
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
@@ -202,7 +104,6 @@ impl Sprite {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.draw_indexed(0..6, 0, 0..1);

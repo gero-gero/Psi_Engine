@@ -1,6 +1,5 @@
 use crate::sprite::Sprite;
 use crate::model3d::Model3D;
-use wgpu::Queue;
 
 pub struct Scene {
     pub sprites: Vec<Sprite>,
@@ -17,12 +16,8 @@ impl Scene {
         }
     }
 
-    pub fn update(&mut self, queue: &Queue, input_handler: &crate::input::InputHandler, dt: f32) {
-        for sprite in &mut self.sprites {
-            let velocity = input_handler.get_velocity();
-            sprite.set_velocity(queue, velocity);
-            sprite.update(queue, dt);
-        }
+    pub fn update(&mut self, _queue: &wgpu::Queue, _input_handler: &crate::input::InputHandler, _dt: f32) {
+        // No update for now
     }
 
     pub fn render(&self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, depth_view: Option<&wgpu::TextureView>, show_3d: bool) {
@@ -38,9 +33,7 @@ impl Scene {
         }
     }
 
-    pub fn set_sprite_color(&mut self, queue: &Queue, index: usize, color: [f32; 4]) {
-        if let Some(sprite) = self.sprites.get_mut(index) {
-            sprite.set_color(queue, color);
-        }
+    pub fn set_sprite_color(&mut self, _queue: &wgpu::Queue, _index: usize, _color: [f32; 4]) {
+        // No color change for now
     }
 }
