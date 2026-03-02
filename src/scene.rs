@@ -5,7 +5,6 @@ pub struct Scene {
     pub sprites: Vec<Sprite>,
     pub models_3d: Vec<Model3D>,
     pub dragging: bool,
-    pub drag_offset_ndc: [f32; 2],
 }
 
 impl Scene {
@@ -16,7 +15,6 @@ impl Scene {
             sprites: vec![sprite],
             models_3d: vec![model_3d],
             dragging: false,
-            drag_offset_ndc: [0.0, 0.0],
         }
     }
 
@@ -28,12 +26,6 @@ impl Scene {
 
         if input_handler.mouse_left_pressed && !self.dragging {
             self.dragging = true;
-            if let Some(sprite) = self.sprites.get(0) {
-                self.drag_offset_ndc = [
-                    sprite.uniform.position[0] - mouse_ndc[0],
-                    sprite.uniform.position[1] - mouse_ndc[1],
-                ];
-            }
         }
 
         if !input_handler.mouse_left_pressed {
@@ -41,10 +33,7 @@ impl Scene {
         }
 
         if self.dragging {
-            let new_pos = [
-                mouse_ndc[0] + self.drag_offset_ndc[0],
-                mouse_ndc[1] + self.drag_offset_ndc[1],
-            ];
+            let new_pos = mouse_ndc;
             if let Some(sprite) = self.sprites.get_mut(0) {
                 sprite.update_position(queue, new_pos);
             }
