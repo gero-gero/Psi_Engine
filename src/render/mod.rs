@@ -1,5 +1,6 @@
 use winit::window::Window;
 use wgpu::{Device, Queue, Surface, Adapter};
+use egui_wgpu::Renderer;
 
 pub struct Renderer {
     pub surface: Surface,
@@ -9,6 +10,7 @@ pub struct Renderer {
     pub depth_texture: wgpu::Texture,
     pub depth_view: wgpu::TextureView,
     pub config: wgpu::SurfaceConfiguration,
+    pub egui_renderer: Renderer,
 }
 
 impl Renderer {
@@ -66,6 +68,8 @@ impl Renderer {
         });
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let egui_renderer = Renderer::new(&device, format, None, 1);
+
         Renderer {
             surface,
             adapter,
@@ -74,10 +78,11 @@ impl Renderer {
             depth_texture,
             depth_view,
             config,
+            egui_renderer,
         }
     }
 
-    pub fn render_frame(&mut self, scene: &crate::scene::Scene, show_3d: bool) {
+    pub fn render_frame(&mut self, scene: &crate::scene::Scene, gui_editor: &mut crate::gui::GuiEditor, window: &winit::window::Window, show_3d: bool) {
         let output = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => return,
@@ -89,6 +94,49 @@ impl Renderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
         scene.render(&mut encoder, &view, Some(&self.depth_view), show_3d);
+
+        let raw_input = gui_editor.egui_state.take_egui_input(window);
+        let full_output = gui_editor.ctx.run(raw_input, |ctx| {
+            egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+                ui.heading("Game Engine MVP");
+                if ui.button("Generate Sprite").clicked() {
+                    gui_editor.generate_requested = true;
+                }
+                ui.checkbox(&mut gui_editor.show_3d, "Show 3D Cube");
+                ui.separator();
+                ui.label(format!("Last output: {}", gui_editor.ai_output));
+                ui.label("Left click and drag to move the sprite.");
+            });
+        });
+
+        gui_editor.egui_state
+            .handle_platform_output(window, &gui_editor.ctx, full_output.platform_output);
+
+        let paint_jobs = gui_editor.ctx.tessellate(full_output.shapes);
+
+        let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+            size_in_pixels: [self.config.width, self.config.height],
+            pixels_per_point: window.scale_factor() as f32,
+        };
+
+        self.egui_renderer.update_buffers(&self.device, &self.queue, &paint_jobs, &screen_descriptor);
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Egui Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+
+            self.egui_renderer.render(&mut render_pass, &paint_jobs, &screen_descriptor);
+        }
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
