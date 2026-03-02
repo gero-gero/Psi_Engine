@@ -1,8 +1,9 @@
 use winit::window::Window;
-use wgpu::{Device, Queue, Surface};
+use wgpu::{Device, Queue, Surface, Adapter};
 
 pub struct Renderer {
     pub surface: Surface,
+    pub adapter: Adapter,
     pub device: Device,
     pub queue: Queue,
     pub depth_texture: wgpu::Texture,
@@ -37,9 +38,10 @@ impl Renderer {
         .expect("Failed to create device");
 
         let size = window.inner_size();
+        let format = surface.get_supported_formats(&adapter)[0];
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb, // Default format
+            format,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
@@ -66,6 +68,7 @@ impl Renderer {
 
         Renderer {
             surface,
+            adapter,
             device,
             queue,
             depth_texture,

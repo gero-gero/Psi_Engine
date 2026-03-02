@@ -23,10 +23,10 @@ pub struct Sprite {
 impl Sprite {
     pub fn new(device: &Device) -> Self {
         let vertices: [Vertex; 4] = [
-            Vertex { position: [-0.1, -0.1], uv: [0.0, 1.0] },
-            Vertex { position: [0.1, -0.1], uv: [1.0, 1.0] },
-            Vertex { position: [0.1, 0.1], uv: [1.0, 0.0] },
-            Vertex { position: [-0.1, 0.1], uv: [0.0, 0.0] },
+            Vertex { position: [-0.5, -0.5], uv: [0.0, 1.0] },
+            Vertex { position: [0.5, -0.5], uv: [1.0, 1.0] },
+            Vertex { position: [0.5, 0.5], uv: [1.0, 0.0] },
+            Vertex { position: [-0.5, 0.5], uv: [0.0, 0.0] },
         ];
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
