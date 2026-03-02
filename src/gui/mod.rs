@@ -1,6 +1,6 @@
 use winit::event::WindowEvent;
 use egui_winit::State as EguiWinitState;
-use egui::{Context, CentralPanel};
+use egui::{Context, TopBottomPanel};
 
 pub struct GuiEditor {
     pub egui_state: EguiWinitState,
@@ -31,7 +31,7 @@ impl GuiEditor {
     pub fn draw(&mut self, window: &winit::window::Window) {
         let raw_input = self.egui_state.take_egui_input(window);
         let full_output = self.ctx.run(raw_input, |ctx| {
-            CentralPanel::default().show(ctx, |ui| {
+            TopBottomPanel::top("top_panel").show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
                 if ui.button("Generate Sprite Color").clicked() {
                     self.generate_requested = true;
