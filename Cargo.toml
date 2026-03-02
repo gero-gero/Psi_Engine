@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 winit = "0.28"
-wgpu = "0.15"
+wgpu = "0.16"
 egui = "0.22"
 egui-winit = "0.22"
 egui-wgpu = "0.22"
