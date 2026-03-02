@@ -9,7 +9,7 @@ pub struct SpriteUniform {
 }
 
 pub struct Sprite {
-    uniform: SpriteUniform,
+    pub uniform: SpriteUniform,
     uniform_buffer: Buffer,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
@@ -20,7 +20,7 @@ pub struct Sprite {
 impl Sprite {
     pub fn new(device: &Device) -> Self {
         let uniform = SpriteUniform {
-            position: [0.0, 0.0],
+            position: [0.5, 0.0], // Start at visible position
             _padding: [0.0, 0.0],
         };
 
