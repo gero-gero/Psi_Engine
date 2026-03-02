@@ -119,7 +119,7 @@ impl Renderer {
             pixels_per_point: window.scale_factor() as f32,
         };
 
-        self.egui_renderer.update_buffers(&self.device, &self.queue, &paint_jobs, &screen_descriptor);
+        self.egui_renderer.update_buffers(&self.device, &self.queue, &mut encoder, &paint_jobs, &screen_descriptor);
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
