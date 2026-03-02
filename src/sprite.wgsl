@@ -12,6 +12,7 @@ struct SpriteUniform {
     _padding4: vec2<f32>,
     _padding5: vec2<f32>,
     _padding6: vec2<f32>,
+    _padding7: vec4<f32>,
 };
 
 @group(0) @binding(0)
