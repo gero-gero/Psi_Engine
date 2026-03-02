@@ -4,6 +4,7 @@ struct VertexInput {
 
 struct SpriteUniform {
     position: vec2<f32>,
+    _padding: vec2<f32>,
     color: vec4<f32>,
 };
 

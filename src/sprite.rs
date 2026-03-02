@@ -5,6 +5,7 @@ use wgpu::util::DeviceExt;
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SpriteUniform {
     pub position: [f32; 2],
+    pub _padding: [f32; 2],
     pub color: [f32; 4],
 }
 
@@ -21,6 +22,7 @@ impl Sprite {
     pub fn new(device: &Device) -> Self {
         let uniform = SpriteUniform {
             position: [0.0, 0.0],
+            _padding: [0.0, 0.0],
             color: [1.0, 0.0, 0.0, 1.0],
         };
 
