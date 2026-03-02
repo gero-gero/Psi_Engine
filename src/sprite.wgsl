@@ -12,7 +12,7 @@ struct VertexOutput {
 var texture: texture_2d<f32>;
 
 @group(0) @binding(1)
-var sampler: sampler;
+var tex_sampler: sampler;
 
 @vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
@@ -24,5 +24,5 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(texture, sampler, in.uv);
+    return textureSample(texture, tex_sampler, in.uv);
 }
