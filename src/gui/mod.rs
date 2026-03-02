@@ -12,7 +12,7 @@ pub struct GuiEditor {
 impl GuiEditor {
     pub fn new(window: &winit::window::Window) -> Self {
         let ctx = Context::default();
-        let egui_state = EguiWinitState::new(window, 2048); // max_texture_side
+        let egui_state = EguiWinitState::new(window);
         GuiEditor {
             egui_state,
             ctx,
