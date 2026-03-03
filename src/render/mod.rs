@@ -83,7 +83,6 @@ impl Renderer {
     }
 
     pub fn render_frame(&mut self, scene: &crate::scene::Scene, gui_editor: &mut crate::gui::GuiEditor, window: &winit::window::Window, show_3d: bool) {
-        static mut LOGGED: bool = false;
         let output = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => return,
@@ -94,18 +93,7 @@ impl Renderer {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        unsafe {
-            if !LOGGED {
-                println!("Starting scene render");
-                LOGGED = true;
-            }
-        }
         scene.render(&mut encoder, &view, Some(&self.depth_view), show_3d);
-        unsafe {
-            if LOGGED && LOGGED {
-                println!("Scene render completed");
-            }
-        }
 
         let raw_input = gui_editor.egui_state.take_egui_input(window);
         let full_output = gui_editor.ctx.run(raw_input, |ctx| {
@@ -134,11 +122,6 @@ impl Renderer {
         self.egui_renderer.update_buffers(&self.device, &self.queue, &mut encoder, &paint_jobs, &screen_descriptor);
 
         {
-            unsafe {
-                if LOGGED && LOGGED {
-                    println!("Starting GUI render");
-                }
-            }
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Egui Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -153,11 +136,6 @@ impl Renderer {
             });
 
             self.egui_renderer.render(&mut render_pass, &paint_jobs, &screen_descriptor);
-            unsafe {
-                if LOGGED && LOGGED {
-                    println!("GUI render completed");
-                }
-            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
