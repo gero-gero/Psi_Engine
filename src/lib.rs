@@ -6,6 +6,7 @@ pub mod ai;
 pub mod sprite;
 pub mod model3d;
 pub mod scene;
+pub mod crop;
 
 use winit::window::Window;
 
@@ -71,8 +72,23 @@ impl Engine {
 
             match self.asset_generator.generate_sprite(&workflow_name, &prompt_text).await {
                 Ok(image_data) => {
-                    self.scene.set_sprite_texture(&self.renderer.device, &self.renderer.queue, 0, &image_data);
-                    self.gui_editor.set_ai_output(format!("Sprite generated ({} bytes)", image_data.len()));
+                    let final_image = if self.gui_editor.auto_crop {
+                        let tolerance = self.gui_editor.crop_tolerance;
+                        match crate::crop::remove_background(&image_data, tolerance) {
+                            Ok(cropped) => {
+                                println!("Auto-crop applied (tolerance: {})", tolerance);
+                                cropped
+                            }
+                            Err(e) => {
+                                eprintln!("Auto-crop failed, using original: {}", e);
+                                image_data
+                            }
+                        }
+                    } else {
+                        image_data
+                    };
+                    self.scene.set_sprite_texture(&self.renderer.device, &self.renderer.queue, 0, &final_image);
+                    self.gui_editor.set_ai_output(format!("Sprite generated ({} bytes)", final_image.len()));
                 }
                 Err(e) => {
                     eprintln!("Asset generation error: {}", e);

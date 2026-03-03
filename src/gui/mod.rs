@@ -13,6 +13,8 @@ pub struct GuiEditor {
     pub available_workflows: Vec<String>,
     pub workflows_loaded: bool,
     pub loading_workflows: bool,
+    pub auto_crop: bool,
+    pub crop_tolerance: u8,
 }
 
 impl GuiEditor {
@@ -30,6 +32,8 @@ impl GuiEditor {
             available_workflows: Vec::new(),
             workflows_loaded: false,
             loading_workflows: false,
+            auto_crop: true,
+            crop_tolerance: 30,
         }
     }
 

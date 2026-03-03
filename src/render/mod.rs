@@ -184,6 +184,16 @@ impl GuiRenderer {
                     }
                 });
 
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut gui_editor.auto_crop, "Auto-crop background");
+                    if gui_editor.auto_crop {
+                        ui.label("Tolerance:");
+                        let mut tol = gui_editor.crop_tolerance as f32;
+                        ui.add(egui::Slider::new(&mut tol, 5.0..=100.0).integer());
+                        gui_editor.crop_tolerance = tol as u8;
+                    }
+                });
+
                 ui.label("Left click and drag to move sprites.");
             });
         });
