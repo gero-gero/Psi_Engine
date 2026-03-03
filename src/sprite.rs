@@ -41,12 +41,23 @@ impl Sprite {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        // Default 1x1 red texture
+        // Create a default 64x64 red texture
+        let width = 64;
+        let height = 64;
+        let mut rgba_data = vec![0u8; (width * height * 4) as usize];
+        for i in 0..(width * height) {
+            let offset = (i * 4) as usize;
+            rgba_data[offset] = 255; // R
+            rgba_data[offset + 1] = 0; // G
+            rgba_data[offset + 2] = 0; // B
+            rgba_data[offset + 3] = 255; // A
+        }
+
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Sprite Texture"),
             size: wgpu::Extent3d {
-                width: 1,
-                height: 1,
+                width,
+                height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -56,6 +67,7 @@ impl Sprite {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
+
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
