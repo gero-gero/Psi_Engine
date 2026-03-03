@@ -123,42 +123,120 @@ impl AssetGenerator {
         Ok(())
     }
 
-    /// Injects a text prompt into an API-format workflow by finding CLIPTextEncode nodes
-    /// or any node with a "text" input.
+    /// Checks if a node's title or text content suggests it's a negative prompt.
+    fn is_negative_prompt_node(node: &Value) -> bool {
+        // Check _meta title
+        if let Some(meta) = node.get("_meta") {
+            if let Some(title) = meta.get("title").and_then(|v| v.as_str()) {
+                let title_lower = title.to_lowercase();
+                if title_lower.contains("negative") {
+                    return true;
+                }
+            }
+        }
+        // Check the text content for negative prompt indicators
+        if let Some(inputs) = node.get("inputs") {
+            if let Some(text) = inputs.get("text").and_then(|v| v.as_str()) {
+                let text_lower = text.to_lowercase();
+                if text_lower.contains("bad") || text_lower.contains("ugly")
+                    || text_lower.contains("worst") || text_lower.contains("deformed")
+                    || text_lower.contains("blurry") || text_lower.contains("low quality")
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Injects a text prompt into an API-format workflow by finding prompt-related nodes.
+    /// Injects into PrimitiveStringMultiline first (as it feeds CLIPTextEncode),
+    /// then falls back to CLIPTextEncode nodes directly.
     fn inject_prompt(api_workflow: &mut Value, prompt_text: &str) {
+        let mut injected = false;
+
         if let Some(obj) = api_workflow.as_object_mut() {
-            // First pass: look for CLIPTextEncode nodes (positive prompt)
-            for (_node_id, node) in obj.iter_mut() {
-                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
-                    if class_type == "CLIPTextEncode" {
-                        if let Some(inputs) = node.get_mut("inputs") {
-                            if let Some(text_val) = inputs.get("text") {
-                                let current = text_val.as_str().unwrap_or("");
-                                // Skip negative prompt nodes
-                                if current.contains("bad") || current.contains("ugly")
-                                    || current.contains("worst") || current.contains("negative")
-                                {
-                                    continue;
+            // Collect node IDs sorted for deterministic order
+            let mut node_ids: Vec<String> = obj.keys().cloned().collect();
+            node_ids.sort_by(|a, b| {
+                let a_num: i64 = a.parse().unwrap_or(i64::MAX);
+                let b_num: i64 = b.parse().unwrap_or(i64::MAX);
+                a_num.cmp(&b_num)
+            });
+
+            // First pass: PrimitiveStringMultiline / PrimitiveString nodes (these feed into CLIPTextEncode)
+            for node_id in &node_ids {
+                if let Some(node) = obj.get_mut(node_id.as_str()) {
+                    if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                        if class_type == "PrimitiveStringMultiline" || class_type == "PrimitiveString" {
+                            if let Some(inputs) = node.get_mut("inputs") {
+                                if let Some(m) = inputs.as_object_mut() {
+                                    println!("Injecting prompt into node {} ({})", node_id, class_type);
+                                    m.insert("value".to_string(), serde_json::json!(prompt_text));
+                                    injected = true;
                                 }
                             }
-                            if let Some(m) = inputs.as_object_mut() {
-                                m.insert("text".to_string(), serde_json::json!(prompt_text));
-                            }
-                            return;
                         }
                     }
                 }
             }
 
-            // Second pass: look for PrimitiveStringMultiline or any node with a "value" that's a string
-            for (_node_id, node) in obj.iter_mut() {
-                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
-                    if class_type == "PrimitiveStringMultiline" || class_type == "PrimitiveString" {
-                        if let Some(inputs) = node.get_mut("inputs") {
-                            if let Some(m) = inputs.as_object_mut() {
-                                m.insert("value".to_string(), serde_json::json!(prompt_text));
+            // If we injected into a Primitive node, it feeds CLIPTextEncode via links,
+            // so we're done.
+            if injected {
+                println!("Prompt injected via PrimitiveString node(s)");
+                return;
+            }
+
+            // Second pass: CLIPTextEncode nodes directly (skip negative prompts)
+            for node_id in &node_ids {
+                if let Some(node) = obj.get(node_id.as_str()) {
+                    if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                        if class_type == "CLIPTextEncode" {
+                            if Self::is_negative_prompt_node(node) {
+                                println!("Skipping negative prompt node {}", node_id);
+                                continue;
                             }
-                            return;
+                            // Check if text input is a link (array) — if so, it's fed by another node
+                            if let Some(inputs) = node.get("inputs") {
+                                if let Some(text_val) = inputs.get("text") {
+                                    if text_val.is_array() {
+                                        println!("Node {} text is a link, skipping direct injection", node_id);
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Now mutably borrow to inject
+                if let Some(node) = obj.get_mut(node_id.as_str()) {
+                    if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()).map(|s| s.to_string()) {
+                        if class_type == "CLIPTextEncode" {
+                            if let Some(inputs) = node.get_mut("inputs") {
+                                if let Some(text_val) = inputs.get("text") {
+                                    if text_val.is_array() {
+                                        continue;
+                                    }
+                                }
+                                if let Some(m) = inputs.as_object_mut() {
+                                    println!("Injecting prompt into node {} (CLIPTextEncode)", node_id);
+                                    m.insert("text".to_string(), serde_json::json!(prompt_text));
+                                    injected = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !injected {
+                println!("WARNING: Could not find any node to inject the prompt into!");
+                println!("Available nodes:");
+                for node_id in &node_ids {
+                    if let Some(node) = obj.get(node_id.as_str()) {
+                        if let Some(ct) = node.get("class_type").and_then(|v| v.as_str()) {
+                            println!("  Node {}: {}", node_id, ct);
                         }
                     }
                 }
