@@ -170,6 +170,7 @@ impl GuiRenderer {
                     if ui.button("Refresh Workflows").clicked() {
                         gui_editor.loading_workflows = true;
                     }
+                    ui.small("(from workflows/ folder)");
                 });
 
                 ui.horizontal(|ui| {

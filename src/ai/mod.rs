@@ -37,30 +37,46 @@ impl AssetGenerator {
         AssetGenerator { client, url }
     }
 
-    /// Fetches the list of saved workflow names from ComfyUI's user data.
+    /// Lists workflow JSON files from the local `workflows/` directory.
     pub async fn list_workflows(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        let resp = self.client
-            .get(&format!("{}/api/get-user-data-list?dir=workflows", self.url))
-            .send()
-            .await?;
-        if !resp.status().is_success() {
-            return Err(format!("Failed to list workflows: HTTP {}", resp.status()).into());
+        let workflows_dir = std::path::Path::new("workflows");
+        if !workflows_dir.exists() {
+            std::fs::create_dir_all(workflows_dir)?;
+            return Ok(Vec::new());
         }
-        let names: Vec<String> = resp.json().await?;
+        let mut names = Vec::new();
+        for entry in std::fs::read_dir(workflows_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("json") {
+                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    names.push(stem.to_string());
+                }
+            }
+        }
+        names.sort();
         Ok(names)
     }
 
-    /// Loads a saved workflow JSON from ComfyUI by name.
-    async fn load_workflow(&self, workflow_name: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        let encoded_name = urlencoding::encode(workflow_name);
-        let resp = self.client
-            .get(&format!("{}/api/get-user-data/workflows/{}", self.url, encoded_name))
-            .send()
-            .await?;
-        if !resp.status().is_success() {
-            return Err(format!("Failed to load workflow '{}': HTTP {}", workflow_name, resp.status()).into());
+    /// Loads a workflow JSON file from the local `workflows/` directory.
+    fn load_workflow_from_file(workflow_name: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        let mut path = std::path::PathBuf::from("workflows");
+        let filename = if workflow_name.ends_with(".json") {
+            workflow_name.to_string()
+        } else {
+            format!("{}.json", workflow_name)
+        };
+        path.push(&filename);
+
+        if !path.exists() {
+            return Err(format!(
+                "Workflow file not found: {}. Place ComfyUI API-format JSON files in the 'workflows/' directory.",
+                path.display()
+            ).into());
         }
-        let workflow: Value = resp.json().await?;
+
+        let contents = std::fs::read_to_string(&path)?;
+        let workflow: Value = serde_json::from_str(&contents)?;
         Ok(workflow)
     }
 
@@ -160,7 +176,7 @@ impl AssetGenerator {
 
     /// Generate a sprite using a named ComfyUI workflow and a text prompt.
     pub async fn generate_sprite(&mut self, workflow_name: &str, prompt_text: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let workflow = self.load_workflow(workflow_name).await?;
+        let workflow = Self::load_workflow_from_file(workflow_name)?;
 
         let mut api_workflow = Self::workflow_to_api_format(&workflow)?;
 
