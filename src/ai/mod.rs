@@ -80,92 +80,84 @@ impl AssetGenerator {
         Ok(workflow)
     }
 
-    /// Converts a ComfyUI web-format workflow (with nodes array) to API format,
-    /// or returns it as-is if it's already in API format.
-    fn workflow_to_api_format(workflow: &Value) -> Result<Value, Box<dyn std::error::Error>> {
-        if let Some(nodes) = workflow.get("nodes").and_then(|n| n.as_array()) {
-            let links = workflow.get("links").and_then(|l| l.as_array());
-            let mut api_prompt = serde_json::Map::new();
-
-            let mut link_map: std::collections::HashMap<i64, (i64, i64)> = std::collections::HashMap::new();
-            if let Some(links) = links {
-                for link in links {
-                    if let Some(link_arr) = link.as_array() {
-                        if link_arr.len() >= 4 {
-                            let link_id = link_arr[0].as_i64().unwrap_or(0);
-                            let source_node = link_arr[1].as_i64().unwrap_or(0);
-                            let source_slot = link_arr[2].as_i64().unwrap_or(0);
-                            link_map.insert(link_id, (source_node, source_slot));
-                        }
-                    }
+    /// Checks if a JSON value is in ComfyUI API format (object with string node IDs
+    /// mapping to objects with "class_type" and "inputs").
+    fn is_api_format(workflow: &Value) -> bool {
+        if let Some(obj) = workflow.as_object() {
+            // API format: keys are node IDs (numeric strings), values have "class_type"
+            for (key, val) in obj {
+                // Skip non-node keys
+                if key == "extra" || key == "version" || key == "config" {
+                    continue;
+                }
+                // Check if this looks like a node definition
+                if val.get("class_type").is_some() && val.get("inputs").is_some() {
+                    return true;
+                }
+                // If it has "nodes" array, it's web format
+                if key == "nodes" {
+                    return false;
                 }
             }
-
-            for node in nodes {
-                let node_id = node.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
-                let class_type = node.get("type").and_then(|v| v.as_str()).unwrap_or("").to_string();
-
-                let mut inputs = serde_json::Map::new();
-
-                // Process node inputs (linked connections)
-                if let Some(node_inputs) = node.get("inputs").and_then(|v| v.as_array()) {
-                    for input_def in node_inputs {
-                        let input_name = input_def.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                        if let Some(link_id) = input_def.get("link").and_then(|v| v.as_i64()) {
-                            if let Some(&(src_node, src_slot)) = link_map.get(&link_id) {
-                                inputs.insert(
-                                    input_name.to_string(),
-                                    serde_json::json!([src_node.to_string(), src_slot]),
-                                );
-                            }
-                        }
-                    }
-                }
-
-                // Map widgets_values to the correct input names
-                if let Some(widgets) = node.get("widgets_values").and_then(|v| v.as_array()) {
-                    let widget_names = get_widget_names_for_class(&class_type);
-                    for (i, val) in widgets.iter().enumerate() {
-                        if i < widget_names.len() {
-                            let name = widget_names[i];
-                            if !inputs.contains_key(name) {
-                                inputs.insert(name.to_string(), val.clone());
-                            }
-                        }
-                    }
-                }
-
-                let mut node_obj = serde_json::Map::new();
-                node_obj.insert("class_type".to_string(), serde_json::json!(class_type));
-                node_obj.insert("inputs".to_string(), Value::Object(inputs));
-
-                api_prompt.insert(node_id.to_string(), Value::Object(node_obj));
-            }
-
-            Ok(Value::Object(api_prompt))
-        } else {
-            Ok(workflow.clone())
         }
+        false
     }
 
-    /// Injects a text prompt into the workflow by finding CLIPTextEncode nodes.
+    /// Validates that an API-format workflow doesn't contain subgraph UUIDs as class_types.
+    fn validate_api_workflow(workflow: &Value) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(obj) = workflow.as_object() {
+            for (node_id, node) in obj {
+                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                    // UUID pattern check: contains hyphens and is 36 chars (like "7b34ab90-36f9-45ba-a665-71d418f0df18")
+                    if class_type.len() == 36 && class_type.chars().filter(|c| *c == '-').count() == 4 {
+                        return Err(format!(
+                            "Node '{}' has subgraph type '{}'. This workflow uses ComfyUI subgraphs \
+                            which cannot be sent directly via the API. Please export the workflow \
+                            using 'Save (API Format)' in ComfyUI (enable Dev Mode in settings first).",
+                            node_id, class_type
+                        ).into());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Injects a text prompt into an API-format workflow by finding CLIPTextEncode nodes
+    /// or any node with a "text" input.
     fn inject_prompt(api_workflow: &mut Value, prompt_text: &str) {
         if let Some(obj) = api_workflow.as_object_mut() {
+            // First pass: look for CLIPTextEncode nodes (positive prompt)
             for (_node_id, node) in obj.iter_mut() {
                 if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
                     if class_type == "CLIPTextEncode" {
                         if let Some(inputs) = node.get_mut("inputs") {
                             if let Some(text_val) = inputs.get("text") {
                                 let current = text_val.as_str().unwrap_or("");
+                                // Skip negative prompt nodes
                                 if current.contains("bad") || current.contains("ugly")
                                     || current.contains("worst") || current.contains("negative")
                                 {
                                     continue;
                                 }
                             }
-                            inputs.as_object_mut().map(|m| {
+                            if let Some(m) = inputs.as_object_mut() {
                                 m.insert("text".to_string(), serde_json::json!(prompt_text));
-                            });
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Second pass: look for PrimitiveStringMultiline or any node with a "value" that's a string
+            for (_node_id, node) in obj.iter_mut() {
+                if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                    if class_type == "PrimitiveStringMultiline" || class_type == "PrimitiveString" {
+                        if let Some(inputs) = node.get_mut("inputs") {
+                            if let Some(m) = inputs.as_object_mut() {
+                                m.insert("value".to_string(), serde_json::json!(prompt_text));
+                            }
                             return;
                         }
                     }
@@ -178,8 +170,28 @@ impl AssetGenerator {
     pub async fn generate_sprite(&mut self, workflow_name: &str, prompt_text: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let workflow = Self::load_workflow_from_file(workflow_name)?;
 
-        let mut api_workflow = Self::workflow_to_api_format(&workflow)?;
+        // Determine if this is API format or web format
+        let api_workflow = if Self::is_api_format(&workflow) {
+            println!("Workflow is in API format");
+            workflow
+        } else if workflow.get("nodes").is_some() {
+            return Err(
+                "This workflow is in ComfyUI web/graph format (not API format). \
+                Please re-export it using 'Save (API Format)' in ComfyUI. \
+                To enable this option: Settings → Enable Dev Mode Options, \
+                then use the 'Save (API Format)' button in the menu."
+                .into()
+            );
+        } else {
+            // Try using it as-is (might be API format without class_type in first node)
+            println!("Workflow format unclear, attempting to use as API format");
+            workflow
+        };
 
+        // Validate no subgraph UUIDs
+        Self::validate_api_workflow(&api_workflow)?;
+
+        let mut api_workflow = api_workflow;
         Self::inject_prompt(&mut api_workflow, prompt_text);
 
         let request_body = serde_json::json!({
@@ -258,21 +270,3 @@ impl AssetGenerator {
     }
 }
 
-fn get_widget_names_for_class(class_type: &str) -> Vec<&'static str> {
-    match class_type {
-        "KSampler" => vec!["seed", "control_after_generate", "steps", "cfg", "sampler_name", "scheduler", "denoise"],
-        "KSamplerAdvanced" => vec!["add_noise", "noise_seed", "control_after_generate", "steps", "cfg", "sampler_name", "scheduler", "start_at_step", "end_at_step", "return_with_leftover_noise"],
-        "CheckpointLoaderSimple" => vec!["ckpt_name"],
-        "CLIPTextEncode" => vec!["text"],
-        "EmptyLatentImage" => vec!["width", "height", "batch_size"],
-        "SaveImage" => vec!["filename_prefix"],
-        "PreviewImage" => vec![],
-        "VAEDecode" => vec![],
-        "VAEEncode" => vec![],
-        "LoraLoader" => vec!["lora_name", "strength_model", "strength_clip"],
-        "CLIPSetLastLayer" => vec!["stop_at_clip_layer"],
-        "LatentUpscale" => vec!["upscale_method", "width", "height", "crop"],
-        "LatentUpscaleBy" => vec!["upscale_method", "scale_by"],
-        _ => vec![],
-    }
-}
