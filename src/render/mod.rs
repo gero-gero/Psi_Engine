@@ -178,6 +178,10 @@ impl GuiRenderer {
             pixels_per_point: window.scale_factor() as f32,
         };
 
+        for (id, image_delta) in &full_output.textures_delta.set {
+            self.egui_renderer.update_texture(device, queue, *id, image_delta);
+        }
+
         self.egui_renderer.update_buffers(device, queue, encoder, &paint_jobs, &screen_descriptor);
 
         {
@@ -195,6 +199,10 @@ impl GuiRenderer {
             });
 
             self.egui_renderer.render(&mut render_pass, &paint_jobs, &screen_descriptor);
+        }
+
+        for id in &full_output.textures_delta.free {
+            self.egui_renderer.free_texture(id);
         }
     }
 }
