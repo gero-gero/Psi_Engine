@@ -167,7 +167,10 @@ impl AssetGenerator {
             // First pass: PrimitiveStringMultiline / PrimitiveString nodes (these feed into CLIPTextEncode)
             for node_id in &node_ids {
                 if let Some(node) = obj.get_mut(node_id.as_str()) {
-                    if let Some(class_type) = node.get("class_type").and_then(|v| v.as_str()) {
+                    let class_type = node.get("class_type")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    if let Some(class_type) = class_type {
                         if class_type == "PrimitiveStringMultiline" || class_type == "PrimitiveString" {
                             if let Some(inputs) = node.get_mut("inputs") {
                                 if let Some(m) = inputs.as_object_mut() {
