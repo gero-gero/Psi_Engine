@@ -107,6 +107,11 @@ impl Renderer {
                 ui.label(format!("Last output: {}", gui_editor.ai_output));
                 ui.label("Left click and drag to move the sprite.");
             });
+
+            egui::SidePanel::right("right_panel").show(ctx, |ui| {
+                ui.label("Text Box:");
+                ui.text_edit_singleline(&mut gui_editor.text_box);
+            });
         });
 
         gui_editor.egui_state
