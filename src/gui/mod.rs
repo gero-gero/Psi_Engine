@@ -8,6 +8,7 @@ pub struct GuiEditor {
     pub ai_output: String,
     pub generate_requested: bool,
     pub show_3d: bool,
+    pub text_box: String,
 }
 
 impl GuiEditor {
@@ -20,6 +21,7 @@ impl GuiEditor {
             ai_output: String::new(),
             generate_requested: false,
             show_3d: false,
+            text_box: String::new(),
         }
     }
 
