@@ -145,23 +145,23 @@ impl GuiRenderer {
                 ui.label("Left click and drag to move sprites.");
             });
 
-            egui::SidePanel::right("right_panel").min_width(250.0).show(ctx, |ui| {
+            egui::SidePanel::right("right_panel").default_width(280.0).min_width(200.0).show(ctx, |ui| {
                 ui.heading("Asset Generator");
                 ui.separator();
 
-                ui.label("Workflow:");
-                if gui_editor.available_workflows.is_empty() {
-                    ui.text_edit_singleline(&mut gui_editor.workflow_name);
-                    ui.label("(type name or click Refresh)");
-                } else {
-                    egui::ComboBox::from_label("")
+                ui.label("Workflow name:");
+                ui.text_edit_singleline(&mut gui_editor.workflow_name);
+
+                if !gui_editor.available_workflows.is_empty() {
+                    egui::ComboBox::from_id_source("workflow_combo")
                         .selected_text(if gui_editor.workflow_name.is_empty() {
-                            "Select workflow..."
+                            "Select workflow...".to_string()
                         } else {
-                            &gui_editor.workflow_name
+                            gui_editor.workflow_name.clone()
                         })
                         .show_ui(ui, |ui| {
-                            for wf in gui_editor.available_workflows.clone() {
+                            let workflows = gui_editor.available_workflows.clone();
+                            for wf in workflows {
                                 ui.selectable_value(&mut gui_editor.workflow_name, wf.clone(), &wf);
                             }
                         });
@@ -173,15 +173,18 @@ impl GuiRenderer {
 
                 ui.separator();
                 ui.label("Prompt:");
-                ui.text_edit_multiline(&mut gui_editor.prompt_text);
+                ui.add(egui::TextEdit::multiline(&mut gui_editor.prompt_text).desired_rows(4).desired_width(f32::INFINITY));
 
                 ui.separator();
-                let can_generate = !gui_editor.workflow_name.is_empty() && !gui_editor.prompt_text.is_empty();
-                ui.add_enabled_ui(can_generate, |ui| {
-                    if ui.button("Generate Sprite").clicked() {
+                if ui.button("Generate Sprite").clicked() {
+                    if !gui_editor.workflow_name.is_empty() && !gui_editor.prompt_text.is_empty() {
                         gui_editor.generate_requested = true;
                     }
-                });
+                }
+
+                if gui_editor.workflow_name.is_empty() || gui_editor.prompt_text.is_empty() {
+                    ui.small("Enter workflow name and prompt to generate.");
+                }
             });
         });
 
