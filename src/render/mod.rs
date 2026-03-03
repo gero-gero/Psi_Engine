@@ -139,52 +139,51 @@ impl GuiRenderer {
         let full_output = gui_editor.ctx.run(raw_input, |ctx| {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
                 ui.heading("Game Engine MVP");
-                ui.checkbox(&mut gui_editor.show_3d, "Show 3D Cube");
-                ui.separator();
-                ui.label(format!("Status: {}", gui_editor.ai_output));
-                ui.label("Left click and drag to move sprites.");
-            });
 
-            egui::SidePanel::right("right_panel").default_width(280.0).min_width(200.0).show(ctx, |ui| {
-                ui.heading("Asset Generator");
-                ui.separator();
-
-                ui.label("Workflow name:");
-                ui.text_edit_singleline(&mut gui_editor.workflow_name);
-
-                if !gui_editor.available_workflows.is_empty() {
-                    egui::ComboBox::from_id_source("workflow_combo")
-                        .selected_text(if gui_editor.workflow_name.is_empty() {
-                            "Select workflow...".to_string()
-                        } else {
-                            gui_editor.workflow_name.clone()
-                        })
-                        .show_ui(ui, |ui| {
-                            let workflows = gui_editor.available_workflows.clone();
-                            for wf in workflows {
-                                ui.selectable_value(&mut gui_editor.workflow_name, wf.clone(), &wf);
-                            }
-                        });
-                }
-
-                if ui.button("Refresh Workflows").clicked() {
-                    gui_editor.loading_workflows = true;
-                }
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut gui_editor.show_3d, "Show 3D Cube");
+                    ui.separator();
+                    ui.label(format!("Status: {}", gui_editor.ai_output));
+                });
 
                 ui.separator();
-                ui.label("Prompt:");
-                ui.add(egui::TextEdit::multiline(&mut gui_editor.prompt_text).desired_rows(4).desired_width(f32::INFINITY));
 
-                ui.separator();
-                if ui.button("Generate Sprite").clicked() {
-                    if !gui_editor.workflow_name.is_empty() && !gui_editor.prompt_text.is_empty() {
-                        gui_editor.generate_requested = true;
+                ui.horizontal(|ui| {
+                    ui.label("Workflow:");
+                    ui.add(egui::TextEdit::singleline(&mut gui_editor.workflow_name).desired_width(200.0));
+
+                    if !gui_editor.available_workflows.is_empty() {
+                        egui::ComboBox::from_id_source("workflow_combo")
+                            .selected_text(if gui_editor.workflow_name.is_empty() {
+                                "Select...".to_string()
+                            } else {
+                                gui_editor.workflow_name.clone()
+                            })
+                            .show_ui(ui, |ui| {
+                                let workflows = gui_editor.available_workflows.clone();
+                                for wf in workflows {
+                                    ui.selectable_value(&mut gui_editor.workflow_name, wf.clone(), &wf);
+                                }
+                            });
                     }
-                }
 
-                if gui_editor.workflow_name.is_empty() || gui_editor.prompt_text.is_empty() {
-                    ui.small("Enter workflow name and prompt to generate.");
-                }
+                    if ui.button("Refresh Workflows").clicked() {
+                        gui_editor.loading_workflows = true;
+                    }
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("Prompt:");
+                    ui.add(egui::TextEdit::singleline(&mut gui_editor.prompt_text).desired_width(400.0));
+
+                    if ui.button("Generate Sprite").clicked() {
+                        if !gui_editor.workflow_name.is_empty() && !gui_editor.prompt_text.is_empty() {
+                            gui_editor.generate_requested = true;
+                        }
+                    }
+                });
+
+                ui.label("Left click and drag to move sprites.");
             });
         });
 
