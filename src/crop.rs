@@ -1,4 +1,4 @@
-use image::{RgbaImage, Rgba, GenericImageView};
+use image::{RgbaImage, Rgba};
 use std::collections::VecDeque;
 
 /// Removes the background from an image by flood-filling from the corners.

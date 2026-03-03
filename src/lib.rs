@@ -9,6 +9,9 @@ pub mod scene;
 pub mod crop;
 
 use winit::window::Window;
+use tokio::sync::mpsc;
+
+type GenerationResult = Result<Vec<u8>, String>;
 
 pub struct Engine {
     pub window: Window,
@@ -18,6 +21,9 @@ pub struct Engine {
     pub gui_editor: gui::GuiEditor,
     pub asset_generator: ai::AssetGenerator,
     pub scene: scene::Scene,
+    generation_rx: mpsc::Receiver<GenerationResult>,
+    generation_tx: mpsc::Sender<GenerationResult>,
+    generating: bool,
 }
 
 impl Engine {
@@ -28,6 +34,7 @@ impl Engine {
         let gui_editor = gui::GuiEditor::new(&window);
         let asset_generator = ai::AssetGenerator::new();
         let scene = scene::Scene::new(&renderer.device, &renderer.queue);
+        let (generation_tx, generation_rx) = mpsc::channel(1);
 
         Engine {
             window,
@@ -37,6 +44,9 @@ impl Engine {
             gui_editor,
             asset_generator,
             scene,
+            generation_rx,
+            generation_tx,
+            generating: false,
         }
     }
 
@@ -65,36 +75,48 @@ impl Engine {
             }
         }
 
-        if self.gui_editor.take_generate_request() {
+        // Check for completed generation results
+        match self.generation_rx.try_recv() {
+            Ok(Ok(image_data)) => {
+                self.generating = false;
+                let final_image = if self.gui_editor.auto_crop {
+                    let tolerance = self.gui_editor.crop_tolerance;
+                    match crate::crop::remove_background(&image_data, tolerance) {
+                        Ok(cropped) => {
+                            println!("Auto-crop applied (tolerance: {})", tolerance);
+                            cropped
+                        }
+                        Err(e) => {
+                            eprintln!("Auto-crop failed, using original: {}", e);
+                            image_data
+                        }
+                    }
+                } else {
+                    image_data
+                };
+                self.scene.set_sprite_texture(&self.renderer.device, &self.renderer.queue, 0, &final_image);
+                self.gui_editor.set_ai_output(format!("Sprite generated ({} bytes)", final_image.len()));
+            }
+            Ok(Err(e)) => {
+                self.generating = false;
+                eprintln!("Asset generation error: {}", e);
+                self.gui_editor.set_ai_output(format!("Error: {}", e));
+            }
+            Err(_) => {} // No result yet
+        }
+
+        if self.gui_editor.take_generate_request() && !self.generating {
             let workflow_name = self.gui_editor.workflow_name.clone();
             let prompt_text = self.gui_editor.prompt_text.clone();
             self.gui_editor.set_ai_output("Generating sprite...".to_string());
+            self.generating = true;
 
-            match self.asset_generator.generate_sprite(&workflow_name, &prompt_text).await {
-                Ok(image_data) => {
-                    let final_image = if self.gui_editor.auto_crop {
-                        let tolerance = self.gui_editor.crop_tolerance;
-                        match crate::crop::remove_background(&image_data, tolerance) {
-                            Ok(cropped) => {
-                                println!("Auto-crop applied (tolerance: {})", tolerance);
-                                cropped
-                            }
-                            Err(e) => {
-                                eprintln!("Auto-crop failed, using original: {}", e);
-                                image_data
-                            }
-                        }
-                    } else {
-                        image_data
-                    };
-                    self.scene.set_sprite_texture(&self.renderer.device, &self.renderer.queue, 0, &final_image);
-                    self.gui_editor.set_ai_output(format!("Sprite generated ({} bytes)", final_image.len()));
-                }
-                Err(e) => {
-                    eprintln!("Asset generation error: {}", e);
-                    self.gui_editor.set_ai_output(format!("Error: {}", e));
-                }
-            }
+            let mut generator = ai::AssetGenerator::new();
+            let tx = self.generation_tx.clone();
+            tokio::spawn(async move {
+                let result = generator.generate_sprite(&workflow_name, &prompt_text).await;
+                let _ = tx.send(result.map_err(|e| e.to_string())).await;
+            });
         }
     }
 
