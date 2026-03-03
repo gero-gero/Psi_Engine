@@ -159,8 +159,6 @@ impl GuiRenderer {
         gui_editor.egui_state
             .handle_platform_output(window, &gui_editor.ctx, full_output.platform_output);
 
-        let paint_jobs = gui_editor.ctx.tessellate(full_output.shapes);
-
         static mut CHECKED: bool = false;
         unsafe {
             if !CHECKED {
@@ -172,6 +170,8 @@ impl GuiRenderer {
                 CHECKED = true;
             }
         }
+
+        let paint_jobs = gui_editor.ctx.tessellate(full_output.shapes);
 
         let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
             size_in_pixels: [window.inner_size().width, window.inner_size().height],
