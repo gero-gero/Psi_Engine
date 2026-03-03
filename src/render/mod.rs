@@ -10,7 +10,7 @@ pub struct Renderer {
     pub depth_texture: wgpu::Texture,
     pub depth_view: wgpu::TextureView,
     pub config: wgpu::SurfaceConfiguration,
-    pub egui_renderer: EguiRenderer,
+    pub gui_renderer: GuiRenderer,
 }
 
 impl Renderer {
@@ -40,7 +40,7 @@ impl Renderer {
         .expect("Failed to create device");
 
         let size = window.inner_size();
-        let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        let format = wgpu::TextureFormat::Bgra8UnormSrgb;
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
@@ -68,7 +68,7 @@ impl Renderer {
         });
         let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let egui_renderer = EguiRenderer::new(&device, format, None, 1);
+        let gui_renderer = GuiRenderer::new(&device, format);
 
         Renderer {
             surface,
@@ -78,7 +78,7 @@ impl Renderer {
             depth_texture,
             depth_view,
             config,
-            egui_renderer,
+            gui_renderer,
         }
     }
 
@@ -95,6 +95,46 @@ impl Renderer {
 
         scene.render(&mut encoder, &view, Some(&self.depth_view), show_3d);
 
+        self.gui_renderer.render(&mut encoder, &view, gui_editor, window, &self.device, &self.queue);
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+    }
+
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.config.width = size.width;
+        self.config.height = size.height;
+        self.surface.configure(&self.device, &self.config);
+        // Recreate depth texture
+        self.depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Depth Texture"),
+            size: wgpu::Extent3d {
+                width: size.width,
+                height: size.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+    }
+}
+
+pub struct GuiRenderer {
+    egui_renderer: EguiRenderer,
+}
+
+impl GuiRenderer {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let egui_renderer = EguiRenderer::new(device, format, None, 1);
+        GuiRenderer { egui_renderer }
+    }
+
+    pub fn render(&mut self, encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, gui_editor: &mut crate::gui::GuiEditor, window: &winit::window::Window, device: &wgpu::Device, queue: &wgpu::Queue) {
         let raw_input = gui_editor.egui_state.take_egui_input(window);
         let full_output = gui_editor.ctx.run(raw_input, |ctx| {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -122,17 +162,17 @@ impl Renderer {
         let paint_jobs = gui_editor.ctx.tessellate(full_output.shapes);
 
         let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
-            size_in_pixels: [self.config.width, self.config.height],
+            size_in_pixels: [window.inner_size().width, window.inner_size().height],
             pixels_per_point: window.scale_factor() as f32,
         };
 
-        self.egui_renderer.update_buffers(&self.device, &self.queue, &mut encoder, &paint_jobs, &screen_descriptor);
+        self.egui_renderer.update_buffers(device, queue, encoder, &paint_jobs, &screen_descriptor);
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Egui Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -144,30 +184,5 @@ impl Renderer {
 
             self.egui_renderer.render(&mut render_pass, &paint_jobs, &screen_descriptor);
         }
-
-        self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
-    }
-
-    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
-        self.config.width = size.width;
-        self.config.height = size.height;
-        self.surface.configure(&self.device, &self.config);
-        // Recreate depth texture
-        self.depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Depth Texture"),
-            size: wgpu::Extent3d {
-                width: size.width,
-                height: size.height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        });
-        self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
     }
 }
