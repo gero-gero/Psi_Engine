@@ -8,8 +8,8 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new(device: &wgpu::Device) -> Self {
-        let sprite = Sprite::new(device);
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+        let sprite = Sprite::new(device, queue);
         let model_3d = Model3D::new_cube(device);
         Scene {
             sprites: vec![sprite],

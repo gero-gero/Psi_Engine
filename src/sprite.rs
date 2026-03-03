@@ -21,7 +21,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device, queue: &Queue) -> Self {
         let vertices: [Vertex; 4] = [
             Vertex { position: [-0.5, -0.5], uv: [0.0, 1.0] },
             Vertex { position: [0.5, -0.5], uv: [1.0, 1.0] },
@@ -67,6 +67,26 @@ impl Sprite {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
+
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &rgba_data,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -257,7 +277,7 @@ impl Sprite {
                 view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::GRAY), // Temporary: Change to GRAY to confirm render pass is executing
                     store: true,
                 },
             })],

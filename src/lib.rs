@@ -26,7 +26,7 @@ impl Engine {
         let physics_world = physics::PhysicsWorld::new();
         let gui_editor = gui::GuiEditor::new(&window);
         let asset_generator = ai::AssetGenerator::new();
-        let scene = scene::Scene::new(&renderer.device);
+        let scene = scene::Scene::new(&renderer.device, &renderer.queue);
 
         Engine {
             window,
