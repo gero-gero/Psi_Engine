@@ -98,6 +98,7 @@ impl Renderer {
         let raw_input = gui_editor.egui_state.take_egui_input(window);
         let full_output = gui_editor.ctx.run(raw_input, |ctx| {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+                ui.painter().rect_filled(ui.available_rect_before_wrap(), 0.0, egui::Color32::BLUE);
                 ui.heading("Game Engine MVP");
                 if ui.button("Generate Sprite").clicked() {
                     gui_editor.generate_requested = true;
@@ -109,6 +110,7 @@ impl Renderer {
             });
 
             egui::SidePanel::right("right_panel").show(ctx, |ui| {
+                ui.painter().rect_filled(ui.available_rect_before_wrap(), 0.0, egui::Color32::GREEN);
                 ui.label("Text Box:");
                 ui.text_edit_singleline(&mut gui_editor.text_box);
             });
