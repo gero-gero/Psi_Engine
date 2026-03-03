@@ -46,13 +46,38 @@ impl Engine {
         let window_size = [size.width as f32, size.height as f32];
         self.scene.update(&self.renderer.queue, &self.input_handler, 1.0 / 60.0, window_size);
 
+        // Load workflow list from ComfyUI if requested
+        if self.gui_editor.loading_workflows {
+            self.gui_editor.loading_workflows = false;
+            self.gui_editor.set_ai_output("Loading workflows...".to_string());
+            match self.asset_generator.list_workflows().await {
+                Ok(workflows) => {
+                    let count = workflows.len();
+                    self.gui_editor.available_workflows = workflows;
+                    self.gui_editor.workflows_loaded = true;
+                    self.gui_editor.set_ai_output(format!("Loaded {} workflows", count));
+                }
+                Err(e) => {
+                    eprintln!("Failed to list workflows: {}", e);
+                    self.gui_editor.set_ai_output(format!("Error loading workflows: {}", e));
+                }
+            }
+        }
+
         if self.gui_editor.take_generate_request() {
-            match self.asset_generator.generate_sprite("A simple 2D sprite of a red square").await {
+            let workflow_name = self.gui_editor.workflow_name.clone();
+            let prompt_text = self.gui_editor.prompt_text.clone();
+            self.gui_editor.set_ai_output("Generating sprite...".to_string());
+
+            match self.asset_generator.generate_sprite(&workflow_name, &prompt_text).await {
                 Ok(image_data) => {
                     self.scene.set_sprite_texture(&self.renderer.device, &self.renderer.queue, 0, &image_data);
-                    self.gui_editor.set_ai_output("Sprite generated".to_string());
+                    self.gui_editor.set_ai_output(format!("Sprite generated ({} bytes)", image_data.len()));
                 }
-                Err(e) => eprintln!("Asset generation error: {}", e),
+                Err(e) => {
+                    eprintln!("Asset generation error: {}", e);
+                    self.gui_editor.set_ai_output(format!("Error: {}", e));
+                }
             }
         }
     }

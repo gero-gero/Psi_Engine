@@ -138,21 +138,50 @@ impl GuiRenderer {
         let raw_input = gui_editor.egui_state.take_egui_input(window);
         let full_output = gui_editor.ctx.run(raw_input, |ctx| {
             egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-                ui.painter().rect_filled(ui.available_rect_before_wrap(), 0.0, egui::Color32::BLUE);
                 ui.heading("Game Engine MVP");
-                if ui.button("Generate Sprite").clicked() {
-                    gui_editor.generate_requested = true;
-                }
                 ui.checkbox(&mut gui_editor.show_3d, "Show 3D Cube");
                 ui.separator();
-                ui.label(format!("Last output: {}", gui_editor.ai_output));
-                ui.label("Left click and drag to move the sprite.");
+                ui.label(format!("Status: {}", gui_editor.ai_output));
+                ui.label("Left click and drag to move sprites.");
             });
 
-            egui::SidePanel::right("right_panel").show(ctx, |ui| {
-                ui.painter().rect_filled(ui.available_rect_before_wrap(), 0.0, egui::Color32::GREEN);
-                ui.label("Text Box:");
-                ui.text_edit_singleline(&mut gui_editor.text_box);
+            egui::SidePanel::right("right_panel").min_width(250.0).show(ctx, |ui| {
+                ui.heading("Asset Generator");
+                ui.separator();
+
+                ui.label("Workflow:");
+                if gui_editor.available_workflows.is_empty() {
+                    ui.text_edit_singleline(&mut gui_editor.workflow_name);
+                    ui.label("(type name or click Refresh)");
+                } else {
+                    egui::ComboBox::from_label("")
+                        .selected_text(if gui_editor.workflow_name.is_empty() {
+                            "Select workflow..."
+                        } else {
+                            &gui_editor.workflow_name
+                        })
+                        .show_ui(ui, |ui| {
+                            for wf in gui_editor.available_workflows.clone() {
+                                ui.selectable_value(&mut gui_editor.workflow_name, wf.clone(), &wf);
+                            }
+                        });
+                }
+
+                if ui.button("Refresh Workflows").clicked() {
+                    gui_editor.loading_workflows = true;
+                }
+
+                ui.separator();
+                ui.label("Prompt:");
+                ui.text_edit_multiline(&mut gui_editor.prompt_text);
+
+                ui.separator();
+                let can_generate = !gui_editor.workflow_name.is_empty() && !gui_editor.prompt_text.is_empty();
+                ui.add_enabled_ui(can_generate, |ui| {
+                    if ui.button("Generate Sprite").clicked() {
+                        gui_editor.generate_requested = true;
+                    }
+                });
             });
         });
 

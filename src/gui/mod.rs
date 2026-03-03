@@ -8,7 +8,11 @@ pub struct GuiEditor {
     pub ai_output: String,
     pub generate_requested: bool,
     pub show_3d: bool,
-    pub text_box: String,
+    pub workflow_name: String,
+    pub prompt_text: String,
+    pub available_workflows: Vec<String>,
+    pub workflows_loaded: bool,
+    pub loading_workflows: bool,
 }
 
 impl GuiEditor {
@@ -21,7 +25,11 @@ impl GuiEditor {
             ai_output: String::new(),
             generate_requested: false,
             show_3d: false,
-            text_box: String::new(),
+            workflow_name: String::new(),
+            prompt_text: "A simple 2D sprite".to_string(),
+            available_workflows: Vec::new(),
+            workflows_loaded: false,
+            loading_workflows: false,
         }
     }
 
