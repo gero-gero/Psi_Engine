@@ -14,10 +14,13 @@ var texture: texture_2d<f32>;
 @group(0) @binding(1)
 var tex_sampler: sampler;
 
+@group(0) @binding(2)
+var<uniform> sprite_position: vec2<f32>;
+
 @vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = vec4<f32>(model.position, 0.0, 1.0);
+    out.clip_position = vec4<f32>(model.position + sprite_position, 0.0, 1.0);
     out.uv = model.uv;
     return out;
 }

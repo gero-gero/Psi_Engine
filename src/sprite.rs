@@ -9,15 +9,23 @@ struct Vertex {
     uv: [f32; 2],
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct PositionUniform {
+    position: [f32; 2],
+}
+
 pub struct Sprite {
     vertex_buffer: Buffer,
     index_buffer: Buffer,
+    uniform_buffer: Buffer,
     texture: Texture,
     texture_view: TextureView,
     sampler: Sampler,
     bind_group_layout: BindGroupLayout,
     bind_group: BindGroup,
     render_pipeline: RenderPipeline,
+    position: [f32; 2],
 }
 
 impl Sprite {
@@ -39,6 +47,13 @@ impl Sprite {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(&indices),
             usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let position_uniform = PositionUniform { position: [0.0, 0.0] };
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Position Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[position_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         // Create a default 64x64 red texture
@@ -118,6 +133,16 @@ impl Sprite {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -132,6 +157,14 @@ impl Sprite {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &uniform_buffer,
+                        offset: 0,
+                        size: None,
+                    }),
                 },
             ],
         });
@@ -200,13 +233,21 @@ impl Sprite {
         Sprite {
             vertex_buffer,
             index_buffer,
+            uniform_buffer,
             texture,
             texture_view,
             sampler,
             bind_group_layout,
             bind_group,
             render_pipeline,
+            position: [0.0, 0.0],
         }
+    }
+
+    pub fn set_position(&mut self, queue: &Queue, position: [f32; 2]) {
+        self.position = position;
+        let position_uniform = PositionUniform { position };
+        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[position_uniform]));
     }
 
     pub fn update_texture(&mut self, device: &Device, queue: &Queue, image_data: &[u8]) {
@@ -265,6 +306,14 @@ impl Sprite {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.uniform_buffer,
+                        offset: 0,
+                        size: None,
+                    }),
                 },
             ],
         });

@@ -18,10 +18,10 @@ impl Scene {
         }
     }
 
-    pub fn update(&mut self, _queue: &wgpu::Queue, input_handler: &crate::input::InputHandler, _dt: f32, _window_size: [f32; 2]) {
+    pub fn update(&mut self, queue: &wgpu::Queue, input_handler: &crate::input::InputHandler, _dt: f32, window_size: [f32; 2]) {
         let _mouse_ndc = [
-            (input_handler.mouse_position[0] as f32 / _window_size[0]) * 2.0 - 1.0,
-            -((input_handler.mouse_position[1] as f32 / _window_size[1]) * 2.0 - 1.0),
+            (input_handler.mouse_position[0] as f32 / window_size[0]) * 2.0 - 1.0,
+            -((input_handler.mouse_position[1] as f32 / window_size[1]) * 2.0 - 1.0),
         ];
 
         if input_handler.mouse_left_pressed && !self.dragging {
@@ -33,7 +33,16 @@ impl Scene {
         }
 
         if self.dragging {
-            // For dragging, we could move the sprite, but since it's textured, perhaps keep position fixed
+            let current_ndc = [
+                (input_handler.mouse_position[0] as f32 / window_size[0]) * 2.0 - 1.0,
+                -((input_handler.mouse_position[1] as f32 / window_size[1]) * 2.0 - 1.0),
+            ];
+            let start_ndc = [
+                (input_handler.drag_start[0] as f32 / window_size[0]) * 2.0 - 1.0,
+                -((input_handler.drag_start[1] as f32 / window_size[1]) * 2.0 - 1.0),
+            ];
+            let drag_offset = [current_ndc[0] - start_ndc[0], current_ndc[1] - start_ndc[1]];
+            self.sprites[0].set_position(queue, drag_offset);
         }
     }
 
