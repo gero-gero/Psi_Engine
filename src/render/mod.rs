@@ -161,6 +161,18 @@ impl GuiRenderer {
 
         let paint_jobs = gui_editor.ctx.tessellate(full_output.shapes);
 
+        static mut CHECKED: bool = false;
+        unsafe {
+            if !CHECKED {
+                if full_output.shapes.is_empty() {
+                    eprintln!("Error: GUI not producing shapes - GUI rendering failed");
+                } else {
+                    println!("GUI is producing {} shapes", full_output.shapes.len());
+                }
+                CHECKED = true;
+            }
+        }
+
         let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
             size_in_pixels: [window.inner_size().width, window.inner_size().height],
             pixels_per_point: window.scale_factor() as f32,
